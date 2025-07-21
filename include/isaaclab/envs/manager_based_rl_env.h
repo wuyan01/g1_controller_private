@@ -32,7 +32,10 @@ public:
 
         { // default joint positions
             auto default_joint_pos = cfg["default_joint_pos"].as<std::vector<float>>();
-            robot->data.default_joint_pos = Eigen::VectorXf::Map(default_joint_pos.data(), default_joint_pos.size());
+            robot->data.default_joint_pos = Eigen::VectorXf(robot->data.joint_ids_map.size());
+            for(int i(0); i< robot->data.joint_ids_map.size(); i++) {
+                robot->data.default_joint_pos[i] = default_joint_pos[robot->data.joint_ids_map[i]];
+            }
         }
         { // joint stiffness and damping
             robot->data.joint_stiffness = cfg["stiffness"].as<std::vector<float>>();

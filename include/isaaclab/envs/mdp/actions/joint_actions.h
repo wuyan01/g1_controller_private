@@ -21,7 +21,10 @@ public:
         _raw_actions.resize(_num_joints, 0.0f);
         _processed_actions.resize(_num_joints, 0.0f);
         _scale = cfg["scale"].as<std::vector<float>>();
-        _offset = cfg["offset"].as<std::vector<float>>();
+        _offset.assign(
+            env->robot->data.default_joint_pos.data(),
+            env->robot->data.default_joint_pos.data() + env->robot->data.default_joint_pos.size()
+        );
 
         if(!cfg["clip"].IsNull())
         {
