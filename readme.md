@@ -19,7 +19,8 @@ cd ~/Workspaces/g1_ws
 Install dependencies.
 
 ```bash
-sudo apt install -y libyaml-cpp-dev libboost-all-dev libeigen3-dev libspdlog-dev libglfw3-dev libxinerama-dev libxcursor-dev libxi-dev
+sudo apt update
+sudo apt install -y libyaml-cpp-dev libboost-all-dev libeigen3-dev libspdlog-dev libglfw3-dev libxinerama-dev libxcursor-dev libxi-dev libfmt-dev
 ```
 
 Install [Unitree C++ SDK](https://github.com/unitreerobotics/unitree_sdk2).
