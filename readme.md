@@ -154,10 +154,11 @@ Start the robot controller in a separate terminal.
 ```bash
 cd ~/Workspaces/g1_ws/g1_rsl_cpp/robots/g1/build
 ./g1_ctrl --network <network_interface>
-# 1. press [L2 + Up] to set the robot to stand up.
+# 1. press [Start] to set the robot to stand up.
 # 2. Click the Mujoco window, and then press 8 to make the robot feet touch the ground.
-# 3. Press [R1 + X] to run the policy.
+# 3. Press [A] to run the policy.
 # 4. Click the Mujoco window, and then press 9 to disable the elastic band.
+# 5. Press [Select] to set the robot to passive mode.
 ```
 
 #### Example
