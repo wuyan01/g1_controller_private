@@ -34,18 +34,19 @@ public:
         // Init Model
         env = Ort::Env(ORT_LOGGING_LEVEL_WARNING, "onnx_model");
 
-        session = create_session_tensorrt(model_path);
-        if (!session) {
-            std::cerr << "[ORT] Falling back to CUDA EP\n";
-            session = create_session_cuda(model_path);
-        }
-        if (!session) {
-            std::cerr << "[ORT] Falling back to CPU EP\n";
+        #if defined(__aarch64__)
             session = create_session_cpu(model_path);
-        }
-        if (!session) {
-            throw std::runtime_error("Failed to create ONNX Runtime session (TensorRT, CUDA, and CPU all failed).");
-        }
+        #else
+            session = create_session_tensorrt(model_path);
+            if (!session) {
+                std::cerr << "[ORT] Falling back to CUDA EP\n";
+                session = create_session_cuda(model_path);
+            }
+            if (!session) {
+                std::cerr << "[ORT] Falling back to CPU EP\n";
+                session = create_session_cpu(model_path);
+            }
+        #endif
 
         Ort::TypeInfo input_type = session->GetInputTypeInfo(0);
         input_shape = input_type.GetTensorTypeAndShapeInfo().GetShape();
