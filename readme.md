@@ -169,6 +169,44 @@ To deploy using the `enp0s31f6` network interface, run:
 ./g1_ctrl --network enp0s31f6
 ```
 
+## GPU Inference
+
+The inference process on GPU provides significant speedup compared to CPU inference.  
+To enable GPU inference, ensure that your environment is set up with the necessary CUDA, cuDNN, and (optionally) TensorRT libraries.
+
+### Add NVIDIA’s CUDA repo
+
+Set your Ubuntu release and architecture:
+
+```bash
+# Examples:
+# Ubuntu 20.04 on x86_64
+export UBUNTU_VERSION=2004
+export ARCH=x86_64
+# Ubuntu 22.04 on ARM64 (Jetson)
+# export UBUNTU_VERSION=2204
+# export ARCH=arm64
+```
+
+Add the NVIDIA CUDA repo:
+
+```bash
+wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${UBUNTU_VERSION}/${ARCH}/cuda-keyring_1.1-1_all.deb
+sudo dpkg -i cuda-keyring_1.1-1_all.deb
+sudo apt-get update
+```
+
+### Install cuDNN and TensorRT
+
+```bash
+# cuDNN 9 for CUDA 12
+sudo apt-get install -y cudnn9-cuda-12
+
+# TensorRT runtime libraries
+sudo apt-get install -y tensorrt-libs
+```
+
+
 ## Python Implementation
 
 Check out our Python implementation of the G1 robot deployment:

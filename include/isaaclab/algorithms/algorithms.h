@@ -4,6 +4,7 @@
 #pragma once
 
 #include "onnxruntime_cxx_api.h"
+#include "onnxruntime_c_api.h"
 #include <mutex>
 
 namespace isaaclab
@@ -32,9 +33,19 @@ public:
     {
         // Init Model
         env = Ort::Env(ORT_LOGGING_LEVEL_WARNING, "onnx_model");
-        session_options.SetGraphOptimizationLevel(ORT_ENABLE_EXTENDED);
 
-        session = std::make_unique<Ort::Session>(env, model_path.c_str(), session_options);
+        session = create_session_tensorrt(model_path);
+        if (!session) {
+            std::cerr << "[ORT] Falling back to CUDA EP\n";
+            session = create_session_cuda(model_path);
+        }
+        if (!session) {
+            std::cerr << "[ORT] Falling back to CPU EP\n";
+            session = create_session_cpu(model_path);
+        }
+        if (!session) {
+            throw std::runtime_error("Failed to create ONNX Runtime session (TensorRT, CUDA, and CPU all failed).");
+        }
 
         Ort::TypeInfo input_type = session->GetInputTypeInfo(0);
         input_shape = input_type.GetTensorTypeAndShapeInfo().GetShape();
@@ -54,6 +65,63 @@ public:
         std::lock_guard<std::mutex> lock(act_mtx_);
         std::memcpy(action.data(), floatarr, output_shape[1] * sizeof(float));
         return action;
+    }
+
+private:
+    // ---- EP constructors ----
+
+    // TensorRT via legacy C API (device_id only). Works with your headers.
+    std::unique_ptr<Ort::Session> create_session_tensorrt(const std::string& model_path) {
+        try {
+            Ort::SessionOptions so;
+            so.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+
+            // Use device 0; if you need to select another GPU, change this int.
+            Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_Tensorrt(so, /*device_id*/ 0));
+
+            auto sess = std::make_unique<Ort::Session>(env, model_path.c_str(), so);
+            std::cerr << "[ORT] Using TensorRT EP\n";
+            return sess;
+        } catch (const Ort::Exception& e) {
+            std::cerr << "[ORT] TensorRT EP failed: " << e.what() << "\n";
+            return nullptr;
+        }
+    }
+
+    std::unique_ptr<Ort::Session> create_session_cuda(const std::string& model_path) {
+        try {
+            Ort::SessionOptions so;
+            so.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+
+            OrtCUDAProviderOptions cuda{};
+            cuda.device_id = 0;
+            cuda.arena_extend_strategy = 0;
+            cuda.gpu_mem_limit = 0;
+            cuda.cudnn_conv_algo_search = OrtCudnnConvAlgoSearchExhaustive;
+            cuda.do_copy_in_default_stream = 1;
+
+            so.AppendExecutionProvider_CUDA(cuda);
+
+            auto sess = std::make_unique<Ort::Session>(env, model_path.c_str(), so);
+            std::cerr << "[ORT] Using CUDA EP\n";
+            return sess;
+        } catch (const Ort::Exception& e) {
+            std::cerr << "[ORT] CUDA EP failed: " << e.what() << "\n";
+            return nullptr;
+        }
+    }
+
+    std::unique_ptr<Ort::Session> create_session_cpu(const std::string& model_path) {
+        try {
+            Ort::SessionOptions so;
+            so.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+            auto sess = std::make_unique<Ort::Session>(env, model_path.c_str(), so);
+            std::cerr << "[ORT] Using CPU EP\n";
+            return sess;
+        } catch (const Ort::Exception& e) {
+            std::cerr << "[ORT] CPU EP failed: " << e.what() << "\n";
+            return nullptr;
+        }
     }
 
 private:
