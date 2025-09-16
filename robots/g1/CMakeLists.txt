@@ -66,19 +66,17 @@ include_directories(
   ${PROJECT_SOURCE_DIR}/../../include/
 )
 
+link_libraries(
+  unitree_sdk2 ddsc ddscxx rt pthread # dds
+  libboost_program_options.a libyaml-cpp.a fmt
+  ${ORT_DIR}/lib/libonnxruntime.so.1.22.0
+)
+
 file(GLOB_RECURSE ADD_SRC_LIST
   ${PROJECT_SOURCE_DIR}/src/*.cpp
 )
 
-add_library(g1_controller_lib ${ADD_SRC_LIST})
-target_link_libraries(g1_controller_lib
-  PRIVATE
-    unitree_sdk2 ddsc ddscxx rt pthread
-    ${Boost_PROGRAM_OPTIONS_LIBRARY}
-    yaml-cpp
-    fmt
-    ${ORT_DIR}/lib/libonnxruntime.so.1.22.0
-)
+add_library(${PROJECT_NAME}_lib ${ADD_SRC_LIST})
+link_libraries(${PROJECT_NAME}_lib)
 
 add_executable(g1_ctrl main.cpp)
-target_link_libraries(g1_ctrl PRIVATE g1_controller_lib)
