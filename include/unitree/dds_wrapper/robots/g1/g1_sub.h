@@ -13,6 +13,7 @@
 #include <unitree/idl/hg/HandCmd_.hpp>
 #include <unitree/idl/hg/HandState_.hpp>
 #include <unitree/idl/go2/MotorStates_.hpp>
+#include <unitree/idl/go2/SportModeState_.hpp>
 
 namespace unitree
 {
@@ -140,6 +141,14 @@ public:
     using SharedPtr = std::shared_ptr<Dex3RightHandState>;
 
     Dex3RightHandState(std::string topic = "rt/dex3/right/state") : SubscriptionBase<MsgType>(topic) {}
+};
+
+class SportModeState : public SubscriptionBase<unitree_go::msg::dds_::SportModeState_>
+{
+public:
+    using SharedPtr = std::shared_ptr<SportModeState>;
+
+    SportModeState(std::string topic = "rt/sportmodestate") : SubscriptionBase<MsgType>(topic) {}
 };
 
 } // namespace subscription
