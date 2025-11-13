@@ -2,19 +2,21 @@
 #include "unitree_articulation.h"
 #include "isaaclab/envs/mdp/observations.h"
 #include "isaaclab/envs/mdp/actions/joint_actions.h"
+#include <ros/package.h>
 
 State_RLBase::State_RLBase(int state_mode, std::string state_string)
 : FSMState(state_mode, state_string) 
 {
     spdlog::info("Initializing State_{}...", state_string);
     auto cfg = param::config["FSM"][state_string];
-    auto policy_dir = parser_policy_dir(cfg["policy_dir"].as<std::string>());
+    std::string package_path = ros::package::getPath("g1_controller");
+    auto policy_dir = package_path + "/" + cfg["policy_dir"].as<std::string>();
 
     env = std::make_unique<isaaclab::ManagerBasedRLEnv>(
-        YAML::LoadFile(policy_dir / "params" / "deploy.yaml"),
+        YAML::LoadFile(package_path + "/config/policy/velocity/v0/params/deploy.yaml"),
         std::make_shared<unitree::BaseArticulation<g1::subscription::LowState::SharedPtr>>(FSMState::lowstate)
     );
-    env->alg = std::make_unique<isaaclab::OrtRunner>(policy_dir / "exported" / "policy.onnx");
+    env->alg = std::make_unique<isaaclab::OrtRunner>(policy_dir + "/exported/policy.onnx");
 }
 
 void State_RLBase::run()

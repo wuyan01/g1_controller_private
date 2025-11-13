@@ -1,8 +1,20 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.0.2)
 project(g1_controller)
 
+# ============================================================
+# C++ Standard
+# ============================================================
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# ============================================================
+# Catkin
+# ============================================================
+find_package(catkin REQUIRED COMPONENTS
+  roscpp
+  std_msgs
+  roslib
+)
 
 # ============================================================
 # System Dependencies
@@ -10,8 +22,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Boost REQUIRED COMPONENTS program_options)
 find_package(yaml-cpp REQUIRED)
 
-# ---- ONNX Runtime (GPU build) ----
-set(ORT_DIR "${PROJECT_SOURCE_DIR}/../../thirdparty/onnxruntime-linux-x64-gpu-1.22.0")
+# ============================================================
+# ONNX Runtime (GPU build)
+# ============================================================
+set(ORT_DIR "${PROJECT_SOURCE_DIR}/thirdparty/onnxruntime-linux-x64-gpu-1.22.0")
+
 if (NOT EXISTS "${ORT_DIR}/lib/libonnxruntime.so.1.22.0")
   message(FATAL_ERROR "libonnxruntime.so.1.22.0 not found in ${ORT_DIR}/lib (GPU version required).")
 endif()
@@ -55,16 +70,25 @@ set(CMAKE_INSTALL_RPATH "${RPATHS}")
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 # ============================================================
+# Catkin export: public headers + libs
+# ============================================================
+catkin_package(
+  INCLUDE_DIRS include
+  LIBRARIES g1_controller_lib
+  CATKIN_DEPENDS roscpp std_msgs roslib
+)
+
+# ============================================================
 # Include directories
 # ============================================================
 include_directories(
   include
+  ${catkin_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}
   /usr/include/eigen3
   /usr/local/include/ddscxx
   /usr/local/include/iceoryx/v2.0.2
   ${ORT_DIR}/include
-  ${PROJECT_SOURCE_DIR}/../../include/
 )
 
 # ============================================================
@@ -80,6 +104,7 @@ file(GLOB_RECURSE ADD_SRC_LIST
 add_library(${PROJECT_NAME}_lib ${ADD_SRC_LIST})
 
 target_link_libraries(${PROJECT_NAME}_lib
+  ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
   yaml-cpp
   unitree_sdk2
@@ -96,8 +121,20 @@ target_link_libraries(${PROJECT_NAME}_lib
 # ============================================================
 # Executable
 # ============================================================
-add_executable(g1_ctrl main.cpp)
+add_executable(g1_ctrl src/main.cpp)
 
 target_link_libraries(g1_ctrl
   ${PROJECT_NAME}_lib
+)
+
+# ============================================================
+# Install rules
+# ============================================================
+install(TARGETS g1_ctrl ${PROJECT_NAME}_lib
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+)
+
+install(DIRECTORY include/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
 )
