@@ -33,5 +33,6 @@ public:
 
     static std::unique_ptr<g1::publisher::LowCmd> lowcmd;
     static std::shared_ptr<g1::subscription::LowState> lowstate;
+    static std::shared_ptr<g1::subscription::SportModeState> sportmodestate;
     static int nq;
 };

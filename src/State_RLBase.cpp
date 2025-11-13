@@ -14,7 +14,7 @@ State_RLBase::State_RLBase(int state_mode, std::string state_string)
 
     env = std::make_unique<isaaclab::ManagerBasedRLEnv>(
         YAML::LoadFile(package_path + "/config/policy/velocity/v0/params/deploy.yaml"),
-        std::make_shared<unitree::BaseArticulation<g1::subscription::LowState::SharedPtr>>(FSMState::lowstate)
+        std::make_shared<unitree::BaseArticulation<g1::subscription::LowState::SharedPtr, g1::subscription::SportModeState::SharedPtr>>(FSMState::lowstate, FSMState::sportmodestate)
     );
     env->alg = std::make_unique<isaaclab::OrtRunner>(policy_dir + "/exported/policy.onnx");
 }

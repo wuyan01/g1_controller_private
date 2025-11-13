@@ -17,6 +17,7 @@ void init_fsm_state()
     }
     FSMState::lowcmd = std::make_unique<unitree::robot::g1::publisher::LowCmd>();
     FSMState::lowstate = std::make_shared<unitree::robot::g1::subscription::LowState>();
+    FSMState::sportmodestate = std::make_shared<unitree::robot::g1::subscription::SportModeState>();
     spdlog::info("Waiting for connection to robot...");
     FSMState::lowstate->wait_for_connection();
     spdlog::info("Connected to robot.");
