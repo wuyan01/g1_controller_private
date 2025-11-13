@@ -15,6 +15,7 @@
 #include <spdlog/sinks/rotating_file_sink.h>
 #include <memory>
 #include <iomanip>
+#include <ros/package.h>
 
 /* ---------- logger ---------- */
 namespace spdlog
@@ -39,40 +40,16 @@ inline void create_logger(std::string log_path)
 namespace param
 {
 inline std::string VERSION = "1.0.0.1";
-inline std::filesystem::path bin_path;
 inline std::filesystem::path proj_dir;
-inline std::filesystem::path config_dir;
 inline YAML::Node config;
-
-inline std::filesystem::path get_bin_path() {
-    std::vector<char> path(1024);
-    ssize_t len = readlink("/proc/self/exe", &path[0], path.size());
-    if (len != -1) {
-        path[len] = '\0';  // Null-terminate the result
-        return std::filesystem::path(&path[0]);
-    } else {
-        spdlog::error("Failed to get executable path.");
-        exit(1);
-    }
-}
 
 /* ---------- config.yaml ---------- */
 inline void load_config_file()
 {
-    assert(std::filesystem::exists(bin_path)); // run param::helper before this function
-    if(bin_path.parent_path().filename() == "bin" || bin_path.parent_path().filename() == "build")
-    {
-        proj_dir = bin_path.parent_path().parent_path();
-        config_dir = proj_dir / "config";
-    }
-    else
-    {
-        proj_dir = bin_path.parent_path();
-        config_dir = proj_dir;
-    }
-
+    std::string package_path = ros::package::getPath("g1_controller");
+    proj_dir = package_path;
+    std::string config_file = package_path + "/config/config.yaml";
     try {
-        std::string config_file = (config_dir / "config.yaml").string();
         if(std::filesystem::exists(config_file))
         {
             config = YAML::LoadFile(config_file);
@@ -89,7 +66,6 @@ namespace po = boost::program_options;
 //※ This function must be called at the beginning of main() function
 inline po::variables_map helper(int argc, char** argv) 
 {
-    bin_path = get_bin_path();
     load_config_file();
 
     po::options_description desc("Unitree Controller");

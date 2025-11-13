@@ -23,6 +23,21 @@ sudo apt update
 sudo apt install -y libyaml-cpp-dev libboost-all-dev libeigen3-dev libspdlog-dev libglfw3-dev libxinerama-dev libxcursor-dev libxi-dev libfmt-dev
 ```
 
+Install [ROS Noetic](http://wiki.ros.org/noetic/Installation/Ubuntu) if you haven't already.
+
+```bash
+sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
+sudo apt install curl # if you haven't already installed curl
+curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | sudo apt-key add -
+sudo apt update
+sudo apt install ros-noetic-desktop-full
+source /opt/ros/noetic/setup.bash
+sudo apt install python3-rosdep python3-rosinstall python3-rosinstall-generator python3-wstool build-essential
+sudo apt install python3-rosdep
+sudo rosdep init
+rosdep update
+```
+
 Install [Unitree C++ SDK](https://github.com/unitreerobotics/unitree_sdk2).
 
 ```bash
@@ -96,11 +111,11 @@ Remember to recompile the Unitree Mujoco plugin after making these changes.
 Compile the robot controller.
 
 ```bash
-cd ~/Workspaces/g1_ws
+mkdir -p ~/Workspaces/catkin_ws/src
+cd ~/Workspaces/catkin_ws/src
 git clone git@github.com:leggedrobotics/g1_rsl_cpp.git
-cd robots/g1
-mkdir build && cd build
-cmake .. && make
+catkin build g1_controller
+source ~/Workspaces/catkin_ws/devel/setup.bash
 ```
 
 
@@ -113,7 +128,7 @@ cmake .. && make
 Example:
 
 ```
-robots/g1/config/policy/velocity/v0/params/deploy.yaml
+config/policy/velocity/v0/params/deploy.yaml
 ```
 
 - **Policy Files**: Place your policy files under the `policies` folder. These files specify the policies that control the behavior of the robot during deployment.
@@ -121,7 +136,7 @@ robots/g1/config/policy/velocity/v0/params/deploy.yaml
 Example:
 
 ```
-robots/g1/config/policy/velocity/v0/exported/policy.onnx
+config/policy/velocity/v0/exported/policy.onnx
 ```
 
 ### Identifying the Network Interface
@@ -152,8 +167,8 @@ Once you have identified the network interface and prepared the configuration fi
 Start the robot controller in a separate terminal.
 
 ```bash
-cd ~/Workspaces/g1_ws/g1_rsl_cpp/robots/g1/build
-./g1_ctrl --network <network_interface>
+cd ~/Workspaces/catkin_ws
+rosrun g1_controller g1_ctrl --network <network_interface>
 # 1. press [Start] to set the robot to stand up.
 # 2. Click the Mujoco window, and then press 8 to make the robot feet touch the ground.
 # 3. Press [A] to run the policy.
@@ -166,7 +181,7 @@ cd ~/Workspaces/g1_ws/g1_rsl_cpp/robots/g1/build
 To deploy using the `enp0s31f6` network interface, run:
 
 ```bash
-./g1_ctrl --network enp0s31f6
+rosrun g1_controller g1_ctrl --network enp0s31f6
 ```
 
 ## GPU Inference

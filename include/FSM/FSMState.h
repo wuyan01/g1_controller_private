@@ -1,7 +1,7 @@
 #pragma once
 
 #include "param.h"
-#include "FSM/BaseState.h"
+#include "BaseState.h"
 #include "unitree/dds_wrapper/robots/g1/g1.h"
 
 using namespace unitree::robot;

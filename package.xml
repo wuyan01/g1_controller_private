@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>g1_controller</name>
+  <version>0.1.0</version>
+  <description>
+    G1 robot controller.
+  </description>
+
+  <!-- Your info -->
+  <maintainer email="chenhli@leggedrobotics.com">Chenhao Li</maintainer>
+  <license>MIT</license>
+
+  <!-- Build system -->
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- ROS dependencies -->
+  <depend>roscpp</depend>
+  <depend>std_msgs</depend>
+  <depend>roslib</depend>
+
+  <!-- System libraries your CMakeLists finds/resolves -->
+  <build_depend>boost</build_depend>
+  <exec_depend>boost</exec_depend>
+
+  <build_depend>yaml-cpp</build_depend>
+  <exec_depend>yaml-cpp</exec_depend>
+
+  <build_depend>eigen</build_depend>
+  <exec_depend>eigen</exec_depend>
+
+  <!-- No third-party libs (ONNX, DDS, Iceoryx, Unitree SDK, OCS2) should be listed here -->
+  <export>
+    <!-- Nothing exported for now -->
+  </export>
+
+</package>
