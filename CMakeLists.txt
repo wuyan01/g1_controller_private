@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
   roslib
+  geometry_msgs
 )
 
 # ============================================================
@@ -75,7 +76,7 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES g1_controller_lib
-  CATKIN_DEPENDS roscpp std_msgs roslib
+  CATKIN_DEPENDS roscpp std_msgs roslib geometry_msgs
 )
 
 # ============================================================
@@ -121,16 +122,16 @@ target_link_libraries(${PROJECT_NAME}_lib
 # ============================================================
 # Executable
 # ============================================================
-add_executable(g1_ctrl src/main.cpp)
+add_executable(g1_controller src/main.cpp)
 
-target_link_libraries(g1_ctrl
+target_link_libraries(g1_controller
   ${PROJECT_NAME}_lib
 )
 
 # ============================================================
 # Install rules
 # ============================================================
-install(TARGETS g1_ctrl ${PROJECT_NAME}_lib
+install(TARGETS g1_controller ${PROJECT_NAME}_lib
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 )

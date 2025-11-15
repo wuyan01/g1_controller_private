@@ -1,0 +1,6 @@
+<launch>
+    <arg name="network" default="lo"/>
+    <node pkg="g1_controller" type="g1_controller" name="g1_controller" output="screen">
+        <param name="network" value="$(arg network)"/>
+    </node>
+</launch>

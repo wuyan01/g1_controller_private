@@ -15,6 +15,10 @@
 #include <unitree/idl/go2/MotorStates_.hpp>
 #include <unitree/idl/go2/SportModeState_.hpp>
 
+#include <ros/ros.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/TwistStamped.h>
+
 namespace unitree
 {
 namespace robot
@@ -149,6 +153,42 @@ public:
     using SharedPtr = std::shared_ptr<SportModeState>;
 
     SportModeState(std::string topic = "rt/sportmodestate") : SubscriptionBase<MsgType>(topic) {}
+};
+
+class MotionCaptureState
+{
+public:
+    using SharedPtr = std::shared_ptr<MotionCaptureState>;
+
+    MotionCaptureState() {}
+
+    MotionCaptureState(ros::NodeHandle& nh,
+        const std::string& pose_topic = "/qualisys/base/pose",
+        const std::string& vel_topic = "/qualisys/base/velocity")
+    {
+        pose_sub_ = nh.subscribe(pose_topic, 10, &MotionCaptureState::poseCallback, this);
+        vel_sub_ = nh.subscribe(vel_topic, 10, &MotionCaptureState::velCallback, this);
+    }
+
+    geometry_msgs::PoseStamped pose_msg_;
+    geometry_msgs::TwistStamped vel_msg_;
+
+private:
+    void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        pose_msg_ = *msg;
+    }
+
+    void velCallback(const geometry_msgs::TwistStamped::ConstPtr& msg)
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        vel_msg_ = *msg;
+    }
+
+    ros::Subscriber pose_sub_;
+    ros::Subscriber vel_sub_;
+    mutable std::mutex mutex_;
 };
 
 } // namespace subscription
