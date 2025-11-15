@@ -39,11 +39,11 @@ public:
         #else
             session = create_session_tensorrt(model_path);
             if (!session) {
-                std::cerr << "[ORT] Falling back to CUDA EP\n";
+                spdlog::warn("[ORT] Falling back to CUDA EP");
                 session = create_session_cuda(model_path);
             }
             if (!session) {
-                std::cerr << "[ORT] Falling back to CPU EP\n";
+                spdlog::warn("[ORT] Falling back to CPU EP");
                 session = create_session_cpu(model_path);
             }
         #endif
@@ -81,10 +81,10 @@ private:
             Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_Tensorrt(so, /*device_id*/ 0));
 
             auto sess = std::make_unique<Ort::Session>(env, model_path.c_str(), so);
-            std::cerr << "[ORT] Using TensorRT EP\n";
+            spdlog::info("[ORT] Using TensorRT EP");
             return sess;
         } catch (const Ort::Exception& e) {
-            std::cerr << "[ORT] TensorRT EP failed: " << e.what() << "\n";
+            spdlog::error("[ORT] TensorRT EP failed: {}", e.what());
             return nullptr;
         }
     }
@@ -104,10 +104,10 @@ private:
             so.AppendExecutionProvider_CUDA(cuda);
 
             auto sess = std::make_unique<Ort::Session>(env, model_path.c_str(), so);
-            std::cerr << "[ORT] Using CUDA EP\n";
+            spdlog::info("[ORT] Using CUDA EP");
             return sess;
         } catch (const Ort::Exception& e) {
-            std::cerr << "[ORT] CUDA EP failed: " << e.what() << "\n";
+            spdlog::error("[ORT] CUDA EP failed: {}", e.what());
             return nullptr;
         }
     }
@@ -117,10 +117,10 @@ private:
             Ort::SessionOptions so;
             so.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
             auto sess = std::make_unique<Ort::Session>(env, model_path.c_str(), so);
-            std::cerr << "[ORT] Using CPU EP\n";
+            spdlog::info("[ORT] Using CPU EP");
             return sess;
         } catch (const Ort::Exception& e) {
-            std::cerr << "[ORT] CPU EP failed: " << e.what() << "\n";
+            spdlog::error("[ORT] CPU EP failed: {}", e.what());
             return nullptr;
         }
     }

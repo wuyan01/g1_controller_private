@@ -47,6 +47,11 @@ public:
         // load managers
         action_manager = std::make_unique<ActionManager>(cfg["actions"], this);
         observation_manager = std::make_unique<ObservationManager>(cfg["observations"], this);
+
+        if(cfg["observations"]["base_lin_vel"].IsDefined()) {
+            spdlog::warn("Observation base_lin_vel is used.");
+            spdlog::warn("Please ensure the motion capture system is set correctly.");
+        }
     }
 
     void reset()

@@ -168,7 +168,7 @@ Start the robot controller in a separate terminal.
 
 ```bash
 cd ~/Workspaces/catkin_ws
-rosrun g1_controller g1_ctrl --network <network_interface>
+roslaunch g1_controller g1_controller.launch network:=<network_interface>
 # 1. press [Start] to set the robot to stand up.
 # 2. Click the Mujoco window, and then press 8 to make the robot feet touch the ground.
 # 3. Press [A] to run the policy.
@@ -181,7 +181,7 @@ rosrun g1_controller g1_ctrl --network <network_interface>
 To deploy using the `enp0s31f6` network interface, run:
 
 ```bash
-rosrun g1_controller g1_ctrl --network enp0s31f6
+roslaunch g1_controller g1_controller.launch network:=enp0s31f6
 ```
 
 ## GPU Inference
