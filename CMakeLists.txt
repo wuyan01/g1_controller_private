@@ -115,9 +115,19 @@ target_link_libraries(${PROJECT_NAME}_lib
   rt
   pthread
   ${ORT_DIR}/lib/libonnxruntime.so.1.22.0
-  ${NVINFER_LIB}
-  ${CUDNN_LIB}
 )
+
+if (NVINFER_LIB)
+  target_link_libraries(${PROJECT_NAME}_lib
+  ${NVINFER_LIB}
+  )
+endif()
+
+if (CUDNN_LIB)
+  target_link_libraries(${PROJECT_NAME}_lib
+  ${CUDNN_LIB}
+  )
+endif()
 
 # ============================================================
 # Executable
