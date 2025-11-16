@@ -84,7 +84,7 @@ private:
             spdlog::info("[ORT] Using TensorRT EP");
             return sess;
         } catch (const Ort::Exception& e) {
-            spdlog::error("[ORT] TensorRT EP failed: {}", e.what());
+            spdlog::warn("[ORT] TensorRT EP failed: {}", e.what());
             return nullptr;
         }
     }
@@ -107,7 +107,7 @@ private:
             spdlog::info("[ORT] Using CUDA EP");
             return sess;
         } catch (const Ort::Exception& e) {
-            spdlog::error("[ORT] CUDA EP failed: {}", e.what());
+            spdlog::warn("[ORT] CUDA EP failed: {}", e.what());
             return nullptr;
         }
     }
@@ -120,7 +120,7 @@ private:
             spdlog::info("[ORT] Using CPU EP");
             return sess;
         } catch (const Ort::Exception& e) {
-            spdlog::error("[ORT] CPU EP failed: {}", e.what());
+            spdlog::warn("[ORT] CPU EP failed: {}", e.what());
             return nullptr;
         }
     }
