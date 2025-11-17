@@ -22,8 +22,7 @@ void init_fsm_state(ros::NodeHandle& nh)
     FSMState::sportmodestate = std::make_shared<unitree::robot::g1::subscription::SportModeState>();
     FSMState::motioncapturestate = std::make_shared<unitree::robot::g1::subscription::MotionCaptureState>(
         nh,
-        "/qualisys/base/pose",
-        "/qualisys/base/velocity"
+        "/qualisys/base/odom"
     );
     spdlog::info("Waiting for connection to robot...");
     FSMState::lowstate->wait_for_connection();

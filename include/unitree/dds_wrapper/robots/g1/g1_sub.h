@@ -16,8 +16,7 @@
 #include <unitree/idl/go2/SportModeState_.hpp>
 
 #include <ros/ros.h>
-#include <geometry_msgs/PoseStamped.h>
-#include <geometry_msgs/TwistStamped.h>
+#include <nav_msgs/Odometry.h>
 
 namespace unitree
 {
@@ -162,32 +161,21 @@ public:
 
     MotionCaptureState() {}
 
-    MotionCaptureState(ros::NodeHandle& nh,
-        const std::string& pose_topic = "/qualisys/base/pose",
-        const std::string& vel_topic = "/qualisys/base/velocity")
+    MotionCaptureState(ros::NodeHandle& nh, const std::string& mocap_topic = "/qualisys/base/odom")
     {
-        pose_sub_ = nh.subscribe(pose_topic, 10, &MotionCaptureState::poseCallback, this);
-        vel_sub_ = nh.subscribe(vel_topic, 10, &MotionCaptureState::velCallback, this);
+        mocap_sub_ = nh.subscribe(mocap_topic, 10, &MotionCaptureState::mocapCallback, this);
     }
 
-    geometry_msgs::PoseStamped pose_msg_;
-    geometry_msgs::TwistStamped vel_msg_;
+    nav_msgs::Odometry mocap_msg_;
 
 private:
-    void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
+    void mocapCallback(const nav_msgs::Odometry::ConstPtr& msg)
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        pose_msg_ = *msg;
+        mocap_msg_ = *msg;
     }
 
-    void velCallback(const geometry_msgs::TwistStamped::ConstPtr& msg)
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        vel_msg_ = *msg;
-    }
-
-    ros::Subscriber pose_sub_;
-    ros::Subscriber vel_sub_;
+    ros::Subscriber mocap_sub_;
     mutable std::mutex mutex_;
 };
 
