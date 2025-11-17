@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   roslib
   geometry_msgs
+  nav_msgs
 )
 
 # ============================================================
@@ -76,7 +77,7 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES g1_controller_lib
-  CATKIN_DEPENDS roscpp std_msgs roslib geometry_msgs
+  CATKIN_DEPENDS roscpp std_msgs roslib geometry_msgs nav_msgs
 )
 
 # ============================================================
