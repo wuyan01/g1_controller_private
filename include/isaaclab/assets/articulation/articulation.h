@@ -35,7 +35,7 @@ struct ArticulationData
     // Projection of the gravity direction on base frame.
     Eigen::Vector3f projected_gravity_b;
 
-    std::vector<float> joint_ids_map;
+    std::vector<int> joint_ids_map;
 
     unitree::common::UnitreeJoystick* joystick = nullptr;
 };
