@@ -1,11 +1,17 @@
-#include "unitree/dds_wrapper/robots/go2/go2.h"
-
 #include "FSM/CtrlFSM.h"
 #include "FSM/State_Passive.h"
 #include "FSM/State_FixStand.h"
 #include "FSM/State_RLBase.h"
-
+#include "State_Mimic.h"
 #include <ros/ros.h>
+
+
+std::unique_ptr<LowCmd_t> FSMState::lowcmd = nullptr;
+std::shared_ptr<LowState_t> FSMState::lowstate = nullptr;
+std::shared_ptr<Keyboard> FSMState::keyboard = std::make_shared<Keyboard>();
+std::shared_ptr<SportModeState_t> FSMState::sportmodestate = nullptr;
+std::shared_ptr<MotionCaptureState_t> FSMState::motioncapturestate = nullptr;
+std::string FSMState::network_interface = "lo";
 
 void init_fsm_state(ros::NodeHandle& nh)
 {
@@ -17,10 +23,10 @@ void init_fsm_state(ros::NodeHandle& nh)
         unitree::robot::go2::shutdown();
         // exit(0);
     }
-    FSMState::lowcmd = std::make_unique<unitree::robot::g1::publisher::LowCmd>();
-    FSMState::lowstate = std::make_shared<unitree::robot::g1::subscription::LowState>();
-    FSMState::sportmodestate = std::make_shared<unitree::robot::g1::subscription::SportModeState>();
-    FSMState::motioncapturestate = std::make_shared<unitree::robot::g1::subscription::MotionCaptureState>(
+    FSMState::lowcmd = std::make_unique<LowCmd_t>();
+    FSMState::lowstate = std::make_shared<LowState_t>();
+    FSMState::sportmodestate = std::make_shared<SportModeState_t>();
+    FSMState::motioncapturestate = std::make_shared<MotionCaptureState_t>(
         nh,
         "/qualisys/base/odom"
     );
@@ -28,13 +34,6 @@ void init_fsm_state(ros::NodeHandle& nh)
     FSMState::lowstate->wait_for_connection();
     spdlog::info("Connected to robot.");
 }
-
-enum FSMMode
-{
-    Passive = 1,
-    FixStand = 2,
-    Velocity = 3,
-};
 
 int main(int argc, char** argv)
 {
@@ -58,39 +57,24 @@ int main(int argc, char** argv)
     init_fsm_state(nh);
 
     FSMState::lowcmd->msg_.mode_machine() = 5; // 29dof
+    if(!FSMState::lowcmd->check_mode_machine(FSMState::lowstate)) {
+        spdlog::critical("Unmatched robot type.");
+        exit(-1);
+    }
     FSMState::network_interface = network;
 
     // Initialize FSM
-    auto & joy = FSMState::lowstate->joystick;
-    auto fsm = std::make_unique<CtrlFSM>(new State_Passive(FSMMode::Passive));
-
-    fsm->states.back()->registered_checks.emplace_back(
-        std::make_pair(
-            [&]()->bool{ return joy.start.on_pressed; }, // Start
-            (int)FSMMode::FixStand
-        )
-    );
-    fsm->add(new State_FixStand(FSMMode::FixStand));
-    fsm->states.back()->registered_checks.emplace_back(
-        std::make_pair(
-            [&]()->bool{ return joy.A.on_pressed; }, // A
-            FSMMode::Velocity
-        )
-    );
-    fsm->add(new State_RLBase(FSMMode::Velocity, "Velocity"));
-    fsm->states.back()->registered_checks.emplace_back(
-        std::make_pair(
-            [&]()->bool{ return joy.back.on_pressed; }, // Select
-            FSMMode::Passive
-        )
-    );
+    auto fsm = std::make_unique<CtrlFSM>(param::config["FSM"]);
+    fsm->start();
 
     spdlog::info("--- FSM States Initialized ---");
     spdlog::info("Press [Start] to enter FixStand mode.");
     spdlog::info("And then press [A] to start controlling the robot.");
     spdlog::info("Press [Select] to enter Passive mode.");
 
-    ros::spin();
+    ros::AsyncSpinner spinner(2);
+    spinner.start();
+    ros::waitForShutdown();
     
     return 0;
 }

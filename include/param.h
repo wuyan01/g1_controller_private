@@ -41,15 +41,17 @@ namespace param
 {
 inline std::string VERSION = "1.0.0.1";
 inline std::filesystem::path proj_dir;
+inline std::filesystem::path config_dir;
 inline YAML::Node config;
 
 /* ---------- config.yaml ---------- */
 inline void load_config_file()
 {
-    std::string package_path = ros::package::getPath("g1_controller");
-    proj_dir = package_path;
-    std::string config_file = package_path + "/config/config.yaml";
+        proj_dir = ros::package::getPath("g1_controller");
+        config_dir = proj_dir / "config";
+
     try {
+        std::string config_file = (config_dir / "config.yaml").string();
         if(std::filesystem::exists(config_file))
         {
             config = YAML::LoadFile(config_file);
