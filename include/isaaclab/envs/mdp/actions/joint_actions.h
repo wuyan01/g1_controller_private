@@ -39,6 +39,12 @@ public:
                 _offset[i] = offset[env->robot->data.joint_ids_map[i]];
             }
         }
+        else {
+            _offset.resize(env->robot->data.joint_ids_map.size());
+            for(int i(0); i< env->robot->data.joint_ids_map.size(); i++) {
+                _offset[i] = env->robot->data.default_joint_pos[i];
+            }
+        }
         if(!cfg["clip"].IsNull()) {
             auto clip = cfg["clip"].as<std::vector<std::vector<float> >>();
             _clip.resize(env->robot->data.joint_ids_map.size());
