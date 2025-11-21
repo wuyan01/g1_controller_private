@@ -5,6 +5,7 @@
 
 #include "FSMState.h"
 #include "isaaclab/envs/mdp/actions/joint_actions.h"
+#include "isaaclab/envs/mdp/terminations.h"
 
 class State_RLBase : public FSMState
 {
@@ -23,8 +24,6 @@ public:
         }
 
         env->robot->update();
-        env->reset();
-
         // Start policy thread
         policy_thread_running = true;
         policy_thread = std::thread([this]{
@@ -33,8 +32,8 @@ public:
             const auto dt = std::chrono::duration_cast<clock::duration>(desiredDuration);
 
             // Initialize timing
-            const auto start = clock::now();
-            auto sleepTill = start + dt;
+            auto sleepTill = clock::now() + dt;
+            env->reset();
 
             while (policy_thread_running)
             {
@@ -63,3 +62,5 @@ private:
     std::thread policy_thread;
     bool policy_thread_running = false;
 };
+
+REGISTER_FSM(State_RLBase)

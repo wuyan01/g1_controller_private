@@ -9,6 +9,8 @@
 namespace isaaclab
 {
 
+class MotionLoader;
+
 struct ArticulationData
 {
     Eigen::Vector3f GRAVITY_VEC_W = Eigen::Vector3f(0.0f, 0.0f, -1.0f);
@@ -34,6 +36,8 @@ struct ArticulationData
 
     // Projection of the gravity direction on base frame.
     Eigen::Vector3f projected_gravity_b;
+
+    Eigen::Quaternionf root_quat_w;
 
     std::vector<int> joint_ids_map;
 

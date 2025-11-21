@@ -1,5 +1,30 @@
 FSM:
+  _: # enabled fsms
+    Passive:
+      id: 1
+    FixStand:
+      id: 2
+    Velocity:
+      id: 3
+      type: RLBase
+
+    Mimic_Dance_102: # uncomment to enable
+      id: 101
+      type: Mimic
+    Mimic_Gangnam_Style:
+      id: 102
+      type: Mimic
+
   Passive:
+    transitions: 
+      FixStand: start.on_pressed
+    mode: [
+      1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 1,
+      1, 1, 1,
+      1, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 1, 1,
+    ]
     kd: [
       3.0, 3.0, 3.0, 3.0, 3.0, 3.0, # left leg
       3.0, 3.0, 3.0, 3.0, 3.0, 3.0, # right leg
@@ -7,7 +32,11 @@ FSM:
       3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, # left arm
       3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, # right arm
     ]
+
   FixStand:
+    transitions: 
+      Passive: back.on_pressed
+      Velocity: A.on_pressed
     kp: [
       100.0, 100.0, 100.0, 150.0, 40.0, 40.0, # left leg
       100.0, 100.0, 100.0, 150.0, 40.0, 40.0, # right leg
@@ -33,4 +62,29 @@ FSM:
       ]
     ]
   Velocity:
-    policy_dir: config/policy/velocity/v0
+    transitions: 
+      Passive: back.on_pressed
+      Mimic_Dance_102: LB(2s) + down.on_pressed
+      Mimic_Gangnam_Style: LB(2s) + left.on_pressed
+    policy_dir: config/policy/velocity
+
+  Mimic_Dance_102:
+    transitions: 
+      Passive: back.on_pressed
+      Velocity: A.on_pressed
+    fps: 60
+    motion_file: config/policy/mimic/dance_102/params/G1_Take_102.bvh_60hz.csv
+    policy_dir: config/policy/mimic/dance_102/
+    time_start: 2.8
+    time_end: 24.0
+
+  Mimic_Gangnam_Style:
+    transitions: 
+      Passive: back.on_pressed
+      Velocity: A.on_pressed
+    fps: 60
+    motion_file: config/policy/mimic/gangnam_style/params/G1_gangnam_style_V01.bvh_60hz.csv
+    policy_dir: config/policy/mimic/gangnam_style/
+    time_start: 5.2
+    time_end: 25.5
+

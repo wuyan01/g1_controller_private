@@ -1,22 +1,57 @@
 #include "FSM/State_RLBase.h"
-#include "unitree_articulation.h"
-#include "isaaclab/envs/mdp/observations.h"
+#include "g1_articulation.h"
+#include "isaaclab/envs/mdp/observations/observations.h"
 #include "isaaclab/envs/mdp/actions/joint_actions.h"
+#include <unordered_map>
 #include <ros/package.h>
+
+namespace isaaclab
+{
+// keyboard velocity commands example
+// change "velocity_commands" observation name in policy deploy.yaml to "keyboard_velocity_commands"
+REGISTER_OBSERVATION(keyboard_velocity_commands)
+{
+    std::string key = FSMState::keyboard->key();
+    static auto cfg = env->cfg["commands"]["base_velocity"]["ranges"];
+
+    static std::unordered_map<std::string, std::vector<float>> key_commands = {
+        {"w", {1.0f, 0.0f, 0.0f}},
+        {"s", {-1.0f, 0.0f, 0.0f}},
+        {"a", {0.0f, 1.0f, 0.0f}},
+        {"d", {0.0f, -1.0f, 0.0f}},
+        {"q", {0.0f, 0.0f, 1.0f}},
+        {"e", {0.0f, 0.0f, -1.0f}}
+    };
+    std::vector<float> cmd = {0.0f, 0.0f, 0.0f};
+    if (key_commands.find(key) != key_commands.end())
+    {
+        // TODO: smooth and limit the velocity commands
+        cmd = key_commands[key];
+    }
+    return cmd;
+}
+
+}
 
 State_RLBase::State_RLBase(int state_mode, std::string state_string)
 : FSMState(state_mode, state_string) 
 {
-    spdlog::info("Initializing State_{}...", state_string);
     auto cfg = param::config["FSM"][state_string];
-    std::string package_path = ros::package::getPath("g1_controller");
-    auto policy_dir = package_path + "/" + cfg["policy_dir"].as<std::string>();
+    std::filesystem::path package_path = ros::package::getPath("g1_controller");
+    auto policy_dir = package_path / cfg["policy_dir"].as<std::string>();
 
     env = std::make_unique<isaaclab::ManagerBasedRLEnv>(
-        YAML::LoadFile(package_path + "/config/policy/velocity/v0/params/deploy.yaml"),
-        std::make_shared<unitree::BaseArticulation<g1::subscription::LowState::SharedPtr, g1::subscription::SportModeState::SharedPtr, g1::subscription::MotionCaptureState::SharedPtr>>(FSMState::lowstate, FSMState::sportmodestate, FSMState::motioncapturestate)
+        YAML::LoadFile(policy_dir / "params" / "deploy.yaml"),
+        std::make_shared<unitree::G1Articulation<LowState_t::SharedPtr, SportModeState_t::SharedPtr, MotionCaptureState_t::SharedPtr>>(FSMState::lowstate, FSMState::sportmodestate, FSMState::motioncapturestate)
     );
-    env->alg = std::make_unique<isaaclab::OrtRunner>(policy_dir + "/exported/policy.onnx");
+    env->alg = std::make_unique<isaaclab::OrtRunner>(policy_dir / "exported" / "policy.onnx");
+
+    this->registered_checks.emplace_back(
+        std::make_pair(
+            [&]()->bool{ return isaaclab::mdp::bad_orientation(env.get(), 1.0); },
+            FSMStringMap.right.at("Passive")
+        )
+    );
 }
 
 void State_RLBase::run()

@@ -4,57 +4,35 @@
 #pragma once
 
 #include "isaaclab/assets/articulation/articulation.h"
-#include "FSM/FSMState.h"
 
 namespace unitree
 {
 
-template <typename LowStatePtr, typename SportModeStatePtr, typename MotionCaptureStatePtr>
+template <typename LowStatePtr>
 class BaseArticulation : public isaaclab::Articulation
 {
 public:
-    BaseArticulation(LowStatePtr lowstate_, SportModeStatePtr sportmodestate_, MotionCaptureStatePtr motioncapturestate_)
-    : lowstate(lowstate_), sportmodestate(sportmodestate_), motioncapturestate(motioncapturestate_)
+    BaseArticulation(LowStatePtr lowstate_)
+    : lowstate(lowstate_)
     {
         data.joystick = &lowstate->joystick;
     }
 
     void update() override
     {
-        Eigen::Quaternionf quat;
-        Eigen::Vector3f root_lin_vel_w;
-        Eigen::Vector3f root_lin_vel_b;
-        if(FSMState::network_interface == "lo") {
-            quat = Eigen::Quaternionf(
-                lowstate->msg_.imu_state().quaternion()[0],
-                lowstate->msg_.imu_state().quaternion()[1],
-                lowstate->msg_.imu_state().quaternion()[2],
-                lowstate->msg_.imu_state().quaternion()[3]
-            );
-            root_lin_vel_w = Eigen::Vector3f(
-                sportmodestate->msg_.velocity()[0],
-                sportmodestate->msg_.velocity()[1],
-                sportmodestate->msg_.velocity()[2]
-            );
-            root_lin_vel_b = quat.conjugate() * root_lin_vel_w;
-        }
-        else {
-            root_lin_vel_b = Eigen::Vector3f(
-                motioncapturestate->mocap_msg_.twist.twist.linear.x,
-                motioncapturestate->mocap_msg_.twist.twist.linear.y,
-                motioncapturestate->mocap_msg_.twist.twist.linear.z
-            );
-        }
-        // base_linear_velocity
-        for(int i(0); i<3; i++) {
-            data.root_lin_vel_b[i] = root_lin_vel_b[i];
-        }
+        std::lock_guard<std::mutex> lock(lowstate->mutex_);
         // base_angular_velocity
         for(int i(0); i<3; i++) {
             data.root_ang_vel_b[i] = lowstate->msg_.imu_state().gyroscope()[i];
         }
         // project_gravity_body
-        data.projected_gravity_b = quat.conjugate() * data.GRAVITY_VEC_W;
+        data.root_quat_w = Eigen::Quaternionf(
+            lowstate->msg_.imu_state().quaternion()[0],
+            lowstate->msg_.imu_state().quaternion()[1],
+            lowstate->msg_.imu_state().quaternion()[2],
+            lowstate->msg_.imu_state().quaternion()[3]
+        );
+        data.projected_gravity_b = data.root_quat_w.conjugate() * data.GRAVITY_VEC_W;
         // joint positions and velocities
         for(int i(0); i< data.joint_ids_map.size(); i++) {
             data.joint_pos[i] = lowstate->msg_.motor_state()[data.joint_ids_map[i]].q();
@@ -63,8 +41,6 @@ public:
     }
 
     LowStatePtr lowstate;
-    SportModeStatePtr sportmodestate;
-    MotionCaptureStatePtr motioncapturestate;
 };
 
 }

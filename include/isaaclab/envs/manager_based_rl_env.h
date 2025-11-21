@@ -10,6 +10,7 @@
 #include "isaaclab/assets/articulation/articulation.h"
 #include "isaaclab/algorithms/algorithms.h"
 #include <iostream>
+#include "isaaclab/utils/utils.h"
 
 namespace isaaclab
 {
@@ -58,6 +59,7 @@ public:
     {
         global_phase = 0;
         episode_length = 0;
+        robot->update();
         action_manager->reset();
         observation_manager->reset();
     }
