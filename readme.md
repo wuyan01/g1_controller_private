@@ -212,3 +212,16 @@ sudo apt-get install -y tensorrt-libs
 Check out our Python implementation of the G1 robot deployment:
 
 - [g1_rsl_python](https://github.com/leggedrobotics/g1_rsl_python): Python implementation of the G1 robot deployment.
+
+
+## Citation
+If you find this repository useful for your research, please consider citing:
+
+```
+@article{li2025robotic,
+  title={Robotic world model: A neural network simulator for robust policy optimization in robotics},
+  author={Li, Chenhao and Krause, Andreas and Hutter, Marco},
+  journal={arXiv preprint arXiv:2501.10100},
+  year={2025}
+}
+```
