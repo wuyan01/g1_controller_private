@@ -47,18 +47,14 @@ cmake .. -DBUILD_EXAMPLES=OFF # Install on the /usr/local directory
 sudo make install
 ```
 
-Install Mujoco for sim-to-sim visualization.
+Download Mujoco for sim-to-sim visualization.
 
 ```bash
 cd ~/Workspaces/g1_ws
-wget https://github.com/google-deepmind/mujoco/releases/download/3.2.7/mujoco-3.2.7-linux-x86_64.tar.gz
-tar -xvzf mujoco-3.2.7-linux-x86_64.tar.gz
-rm mujoco-3.2.7-linux-x86_64.tar.gz
-cd mujoco-3.2.7
-mkdir build && cd build
-cmake ..
-make -j4
-sudo make install
+export MUJOCO_VERSION=3.3.7
+wget https://github.com/google-deepmind/mujoco/releases/download/${MUJOCO_VERSION}/mujoco-${MUJOCO_VERSION}-linux-x86_64.tar.gz
+tar -xvzf mujoco-${MUJOCO_VERSION}-linux-x86_64.tar.gz
+rm mujoco-${MUJOCO_VERSION}-linux-x86_64.tar.gz
 ```
 
 Install [Unitree Mujoco plugin](https://github.com/unitreerobotics/unitree_mujoco) to deploy the robot in Mujoco simulation.
@@ -67,6 +63,7 @@ Install [Unitree Mujoco plugin](https://github.com/unitreerobotics/unitree_mujoc
 cd ~/Workspaces/g1_ws
 git clone https://github.com/unitreerobotics/unitree_mujoco.git
 cd unitree_mujoco/simulate
+ln -s ~/Workspaces/g1_ws/mujoco-${MUJOCO_VERSION} mujoco
 mkdir build && cd build
 cmake ..
 make -j4
@@ -80,29 +77,31 @@ Adapt the configuration file at `/simulate/config.yaml` for the G1 robot.
 - Set `enable_elastic_hand` to 1.
 
 Unitree Mujoco supports Xbox and Switch gamepad layout for joystick control.
-You can add the following lines to the `UnitreeSdk2Bridge::SetupJoystick` method in `simulate/src/unitree_sdk2_bridge/unitree_sdk2_bridge.cc` to enable Logitech Gamepad F710 support:
+You can add the following lines to the `SetupJoystick` method of class `UnitreeSdk2Bridge` in `simulate_python/unitree_sdk2py_bridge.py` to enable Logitech Gamepad F710 support:
 
-```cpp
-    else if (js_type == "logitech")
-    {
-        js_id_.axis["LX"] = 0; // Left stick axis x
-        js_id_.axis["LY"] = 1; // Left stick axis y
-        js_id_.axis["RX"] = 3; // Right stick axis x
-        js_id_.axis["RY"] = 4; // Right stick axis y
-        js_id_.axis["LT"] = 2; // Left trigger
-        js_id_.axis["RT"] = 5; // Right trigger
-        js_id_.axis["DX"] = 6; // Directional pad x
-        js_id_.axis["DY"] = 7; // Directional pad y
-
-        js_id_.button["X"] = 2;
-        js_id_.button["Y"] = 3;
-        js_id_.button["B"] = 1;
-        js_id_.button["A"] = 0;
-        js_id_.button["LB"] = 4;
-        js_id_.button["RB"] = 5;
-        js_id_.button["BACK"] = 6;
-        js_id_.button["START"] = 7;
-    }
+```python
+        elif js_type == "logitech":
+            self.axis_id = {
+                "LX": 0,  # Left stick axis x
+                "LY": 1,  # Left stick axis y
+                "RX": 3,  # Right stick axis x
+                "RY": 4,  # Right stick axis y
+                "LT": 2,  # Left trigger
+                "RT": 5,  # Right trigger
+                "DX": 6,  # Directional pad x
+                "DY": 7,  # Directional pad y
+            }
+            
+            self.button_id = {
+                "X": 2,
+                "Y": 3,
+                "B": 1,
+                "A": 0,
+                "LB": 4,
+                "RB": 5,
+                "SELECT": 6,
+                "START": 7,
+            }
 ```
 Remember to recompile the Unitree Mujoco plugin after making these changes.
 
