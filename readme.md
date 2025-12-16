@@ -219,6 +219,44 @@ sudo apt-get install -y cudnn9-cuda-12
 sudo apt-get install -y tensorrt-libs
 ```
 
+## Livox
+
+Install [Livox-LiDAR-SDK2](https://github.com/leggedrobotics/Livox-LiDAR-SDK2).
+
+```bash
+cd ~/Workspaces/g1_ws
+git clone git@github.com:leggedrobotics/Livox-LiDAR-SDK2.git
+cd Livox-LiDAR-SDK2
+mkdir build && cd build
+cmake .. && make -j
+sudo make install
+```
+
+Install [Livox ROS Driver 2](https://github.com/leggedrobotics/livox_ros_driver2/tree/unitree_g1).
+
+```bash
+cd ~/Workspaces/catkin_ws
+git clone git@github.com:leggedrobotics/livox_ros_driver2.git
+cd livox_ros_driver2
+git checkout unitree_g1
+catkin build livox_ros_driver2
+source ~/Workspaces/catkin_ws/devel/setup.bash
+```
+
+## RealSense
+
+Install [realsense-ros](https://github.com/realsenseai/realsense-ros/tree/ros1-legacy).
+
+```bash
+sudo apt-get install ros-$ROS_DISTRO-realsense2-camera
+cd ~/Workspaces/catkin_ws
+git clone https://github.com/IntelRealSense/realsense-ros.git
+cd realsense-ros/
+git checkout `git tag | sort -V | grep -P "^2.\d+\.\d+" | tail -1`
+catkin build realsense2_camera realsense2_description
+source ~/Workspaces/catkin_ws/devel/setup.bash
+```
+
 
 ## Python Implementation
 
