@@ -27,7 +27,7 @@ Install [ROS Noetic](http://wiki.ros.org/noetic/Installation/Ubuntu) if you have
 
 ```bash
 sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
-sudo apt install curl # if you haven't already installed curl
+sudo apt install curl
 curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | sudo apt-key add -
 sudo apt update
 sudo apt install ros-noetic-desktop-full
@@ -232,14 +232,26 @@ cmake .. && make -j
 sudo make install
 ```
 
-Install [Livox ROS Driver 2](https://github.com/leggedrobotics/livox_ros_driver2/tree/unitree_g1).
+Install [Livox ROS Driver](https://github.com/Livox-SDK/livox_ros_driver) and [Livox ROS Driver 2](https://github.com/leggedrobotics/livox_ros_driver2/tree/unitree_g1).
 
 ```bash
 cd ~/Workspaces/catkin_ws
+git clone https://github.com/Livox-SDK/livox_ros_driver.git
 git clone git@github.com:leggedrobotics/livox_ros_driver2.git
 cd livox_ros_driver2
 git checkout unitree_g1
-catkin build livox_ros_driver2
+catkin build livox_ros_driver livox_ros_driver2
+source ~/Workspaces/catkin_ws/devel/setup.bash
+```
+
+## FAST_LIO
+
+Install [FAST_LIO_LOCALIZATION](https://github.com/deepglint/FAST_LIO_LOCALIZATION_HUMANOID/tree/main).
+
+```bash
+sudo apt install -y libblas-dev liblapack-dev libopenblas-dev
+git clone https://github.com/deepglint/FAST_LIO_LOCALIZATION_HUMANOID.git
+catkin build open3d_loc fast_lio
 source ~/Workspaces/catkin_ws/devel/setup.bash
 ```
 
