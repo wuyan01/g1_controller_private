@@ -30,6 +30,9 @@
   <build_depend>eigen</build_depend>
   <exec_depend>eigen</exec_depend>
 
+  <build_depend>message_generation</build_depend>
+  <exec_depend>message_runtime</exec_depend>
+
   <!-- No third-party libs (ONNX, DDS, Iceoryx, Unitree SDK, OCS2) should be listed here -->
   <export>
     <!-- Nothing exported for now -->

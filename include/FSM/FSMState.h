@@ -57,11 +57,13 @@ public:
     {
         lowstate->update();
         if(keyboard) keyboard->update();
+        republish_lowstate_ros1();
     }
 
     void post_run()
     {
         lowcmd->unlockAndPublish();
+        republish_lowcmd_ros1();
     }
 
     static std::unique_ptr<LowCmd_t> lowcmd;
@@ -69,5 +71,152 @@ public:
     static std::shared_ptr<Keyboard> keyboard;
     static std::shared_ptr<SportModeState_t> sportmodestate;
     static std::shared_ptr<MotionCaptureState_t> motioncapturestate;
+    static std::shared_ptr<LowCmdROS1_t> lowcmd_ros1;
+    static std::shared_ptr<LowStateROS1_t> lowstate_ros1;
     static std::string network_interface;
+
+private:
+
+    void republish_lowstate_ros1()
+    {
+        /* ---------------- version ---------------- */
+        for (int i = 0; i < 2; ++i) {
+            lowstate_ros1->msg_.version[i] =
+                lowstate->msg_.version()[i];
+        }
+
+        /* ---------------- modes ---------------- */
+        lowstate_ros1->msg_.mode_pr =
+            lowstate->msg_.mode_pr();
+
+        lowstate_ros1->msg_.mode_machine =
+            lowstate->msg_.mode_machine();
+
+        lowstate_ros1->msg_.tick =
+            lowstate->msg_.tick();
+
+        /* ---------------- imu_state ---------------- */
+        for (int i = 0; i < 4; ++i) {
+            lowstate_ros1->msg_.imu_state.quaternion[i] =
+                lowstate->msg_.imu_state().quaternion()[i];
+        }
+
+        for (int i = 0; i < 3; ++i) {
+            lowstate_ros1->msg_.imu_state.gyroscope[i] =
+                lowstate->msg_.imu_state().gyroscope()[i];
+
+            lowstate_ros1->msg_.imu_state.accelerometer[i] =
+                lowstate->msg_.imu_state().accelerometer()[i];
+
+            lowstate_ros1->msg_.imu_state.rpy[i] =
+                lowstate->msg_.imu_state().rpy()[i];
+        }
+
+        lowstate_ros1->msg_.imu_state.temperature =
+            lowstate->msg_.imu_state().temperature();
+
+        /* ---------------- motor_state ---------------- */
+        for (int i = 0; i < 35; ++i) {
+            lowstate_ros1->msg_.motor_state[i].mode =
+                lowstate->msg_.motor_state()[i].mode();
+
+            lowstate_ros1->msg_.motor_state[i].q =
+                lowstate->msg_.motor_state()[i].q();
+
+            lowstate_ros1->msg_.motor_state[i].dq =
+                lowstate->msg_.motor_state()[i].dq();
+
+            lowstate_ros1->msg_.motor_state[i].ddq =
+                lowstate->msg_.motor_state()[i].ddq();
+
+            lowstate_ros1->msg_.motor_state[i].tau_est =
+                lowstate->msg_.motor_state()[i].tau_est();
+
+            for (int j = 0; j < 2; ++j) {
+                lowstate_ros1->msg_.motor_state[i].temperature[j] =
+                    lowstate->msg_.motor_state()[i].temperature()[j];
+            }
+
+            lowstate_ros1->msg_.motor_state[i].vol =
+                lowstate->msg_.motor_state()[i].vol();
+
+            for (int j = 0; j < 2; ++j) {
+                lowstate_ros1->msg_.motor_state[i].sensor[j] =
+                    lowstate->msg_.motor_state()[i].sensor()[j];
+            }
+
+            lowstate_ros1->msg_.motor_state[i].motorstate =
+                lowstate->msg_.motor_state()[i].motorstate();
+
+            for (int j = 0; j < 4; ++j) {
+                lowstate_ros1->msg_.motor_state[i].reserve[j] =
+                    lowstate->msg_.motor_state()[i].reserve()[j];
+            }
+        }
+
+        /* ---------------- wireless_remote ---------------- */
+        for (int i = 0; i < 40; ++i) {
+            lowstate_ros1->msg_.wireless_remote[i] =
+                lowstate->msg_.wireless_remote()[i];
+        }
+
+        /* ---------------- reserve ---------------- */
+        for (int i = 0; i < 4; ++i) {
+            lowstate_ros1->msg_.reserve[i] =
+                lowstate->msg_.reserve()[i];
+        }
+
+        /* ---------------- crc ---------------- */
+        lowstate_ros1->msg_.crc =
+            lowstate->msg_.crc();
+
+        lowstate_ros1->publish();
+    }
+
+    void republish_lowcmd_ros1()
+    {
+        /* ---------------- modes ---------------- */
+        lowcmd_ros1->msg_.mode_pr =
+            lowcmd->msg_.mode_pr();
+
+        lowcmd_ros1->msg_.mode_machine =
+            lowcmd->msg_.mode_machine();
+
+        /* ---------------- motor_cmd ---------------- */
+        for (int i = 0; i < 35; ++i) {
+            lowcmd_ros1->msg_.motor_cmd[i].mode =
+                lowcmd->msg_.motor_cmd()[i].mode();
+
+            lowcmd_ros1->msg_.motor_cmd[i].q =
+                lowcmd->msg_.motor_cmd()[i].q();
+
+            lowcmd_ros1->msg_.motor_cmd[i].dq =
+                lowcmd->msg_.motor_cmd()[i].dq();
+
+            lowcmd_ros1->msg_.motor_cmd[i].tau =
+                lowcmd->msg_.motor_cmd()[i].tau();
+
+            lowcmd_ros1->msg_.motor_cmd[i].kp =
+                lowcmd->msg_.motor_cmd()[i].kp();
+
+            lowcmd_ros1->msg_.motor_cmd[i].kd =
+                lowcmd->msg_.motor_cmd()[i].kd();
+
+            lowcmd_ros1->msg_.motor_cmd[i].reserve =
+                lowcmd->msg_.motor_cmd()[i].reserve();
+        }
+
+        /* ---------------- reserve ---------------- */
+        for (int i = 0; i < 4; ++i) {
+            lowcmd_ros1->msg_.reserve[i] =
+                lowcmd->msg_.reserve()[i];
+        }
+
+        /* ---------------- crc ---------------- */
+        lowcmd_ros1->msg_.crc =
+            lowcmd->msg_.crc();
+
+        lowcmd_ros1->publish();
+    }
+
 };

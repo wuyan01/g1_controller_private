@@ -11,6 +11,8 @@ std::shared_ptr<LowState_t> FSMState::lowstate = nullptr;
 std::shared_ptr<Keyboard> FSMState::keyboard = std::make_shared<Keyboard>();
 std::shared_ptr<SportModeState_t> FSMState::sportmodestate = nullptr;
 std::shared_ptr<MotionCaptureState_t> FSMState::motioncapturestate = nullptr;
+std::shared_ptr<LowCmdROS1_t> FSMState::lowcmd_ros1 = nullptr;
+std::shared_ptr<LowStateROS1_t> FSMState::lowstate_ros1 = nullptr;
 std::string FSMState::network_interface = "lo";
 
 void init_fsm_state(ros::NodeHandle& nh)
@@ -30,6 +32,8 @@ void init_fsm_state(ros::NodeHandle& nh)
         nh,
         "/qualisys/base/odom"
     );
+    FSMState::lowcmd_ros1 = std::make_shared<LowCmdROS1_t>(nh, "rt/lowcmd");
+    FSMState::lowstate_ros1 = std::make_shared<LowStateROS1_t>(nh, "rt/lowstate");
     spdlog::info("Waiting for connection to robot...");
     FSMState::lowstate->wait_for_connection();
     spdlog::info("Connected to robot.");

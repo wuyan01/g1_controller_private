@@ -4,6 +4,6 @@
     <node pkg="g1_controller" type="g1_controller" name="g1_controller" output="screen">
         <param name="network" value="$(arg network)"/>
     </node>
-    <include file="$(find livox_ros_driver2)/launch_ROS1/msg_MID360.launch" if="$(arg lidar)"/>
-    <include file="$(find open3d_loc)/launch/localization_3d_g1.launch"/>
+    <!-- <include file="$(find livox_ros_driver2)/launch_ROS1/msg_MID360.launch" if="$(arg lidar)"/>
+    <include file="$(find open3d_loc)/launch/localization_3d_g1.launch"/> -->
 </launch>

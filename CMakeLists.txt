@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   roslib
   geometry_msgs
   nav_msgs
+  message_generation
 )
 
 # ============================================================
@@ -23,6 +24,23 @@ find_package(catkin REQUIRED COMPONENTS
 # ============================================================
 find_package(Boost REQUIRED COMPONENTS program_options)
 find_package(yaml-cpp REQUIRED)
+
+# ============================================================
+# Custom Messages
+# ============================================================
+add_message_files(
+  FILES
+  LowCmd.msg
+  MotorCmd.msg
+  LowState.msg
+  IMUState.msg
+  MotorState.msg
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
 
 # ============================================================
 # ONNX Runtime (GPU build)
@@ -77,7 +95,7 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES g1_controller_lib
-  CATKIN_DEPENDS roscpp std_msgs roslib geometry_msgs nav_msgs
+  CATKIN_DEPENDS roscpp std_msgs roslib geometry_msgs nav_msgs message_runtime
 )
 
 # ============================================================
