@@ -56,11 +56,45 @@ public:
         }
     }
 
+    void pre_run()
+    {
+        FSMState::pre_run();
+        republish_velocitymarkers();
+    }
+
+    static std::shared_ptr<VelocityMarkers_t> velocitymarkers;
+
 private:
     std::unique_ptr<isaaclab::ManagerBasedRLEnv> env;
 
     std::thread policy_thread;
     bool policy_thread_running = false;
+
+    void republish_velocitymarkers()
+    {
+        auto & joystick = env->robot->data.joystick;
+
+        const auto cfg = env->cfg["commands"]["base_velocity"]["ranges"];
+
+        velocitymarkers->cmd_marker_.points.resize(2);
+        velocitymarkers->real_marker_.points.resize(2);
+
+        velocitymarkers->cmd_marker_.points[0].x = 0.0;
+        velocitymarkers->cmd_marker_.points[0].y = 0.0;
+        velocitymarkers->cmd_marker_.points[0].z = 0.0;
+        velocitymarkers->cmd_marker_.points[1].x = std::clamp(joystick->ly(), cfg["lin_vel_x"][0].as<float>(), cfg["lin_vel_x"][1].as<float>());
+        velocitymarkers->cmd_marker_.points[1].y = std::clamp(-joystick->lx(), cfg["lin_vel_y"][0].as<float>(), cfg["lin_vel_y"][1].as<float>());
+        velocitymarkers->cmd_marker_.points[1].z = 0.0;
+
+        velocitymarkers->real_marker_.points[0].x = 0.0;
+        velocitymarkers->real_marker_.points[0].y = 0.0;
+        velocitymarkers->real_marker_.points[0].z = 0.0;
+        velocitymarkers->real_marker_.points[1].x = env->robot->data.root_lin_vel_b[0];
+        velocitymarkers->real_marker_.points[1].y = env->robot->data.root_lin_vel_b[1];
+        velocitymarkers->real_marker_.points[1].z = 0.0;
+
+        velocitymarkers->publish();
+    }
 };
 
 REGISTER_FSM(State_RLBase)

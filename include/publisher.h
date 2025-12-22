@@ -3,6 +3,8 @@
 #include <ros/ros.h>
 #include <sensor_msgs/JointState.h>
 #include <nav_msgs/Odometry.h>
+#include <visualization_msgs/MarkerArray.h>
+#include <visualization_msgs/Marker.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
@@ -91,6 +93,83 @@ public:
 private:
 
     ros::Publisher jointstate_pub_;
+};
+
+
+class VelocityMarkers
+{
+public:
+    using SharedPtr = std::shared_ptr<VelocityMarkers>;
+
+    VelocityMarkers() {}
+
+    VelocityMarkers(ros::NodeHandle& nh, const std::string& velocitymarkers_topic = "rt/velocity_markers", uint32_t queue_size = 10)
+    {
+        marker_pub_ = nh.advertise<visualization_msgs::MarkerArray>(velocitymarkers_topic, queue_size);
+    }
+
+    void publish()
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+
+        marker_array_.markers.clear();
+        
+        cmd_marker_.header.stamp = ros::Time::now();
+        cmd_marker_.header.frame_id = "torso_link";
+        cmd_marker_.ns = "cmd_vel";
+        cmd_marker_.id = 0;
+        cmd_marker_.type = visualization_msgs::Marker::ARROW;
+        cmd_marker_.action = visualization_msgs::Marker::ADD;
+
+        cmd_marker_.pose.orientation.x = 0.0;
+        cmd_marker_.pose.orientation.y = 0.0;
+        cmd_marker_.pose.orientation.z = 0.0;
+        cmd_marker_.pose.orientation.w = 1.0;
+
+        cmd_marker_.scale.x = 0.1;
+        cmd_marker_.scale.y = 0.2;
+        cmd_marker_.scale.z = 0.2;
+
+        cmd_marker_.color.r = 0.0f;
+        cmd_marker_.color.g = 1.0f;
+        cmd_marker_.color.b = 0.0f;
+        cmd_marker_.color.a = 0.9f;
+
+
+        real_marker_.header.stamp = ros::Time::now();
+        real_marker_.header.frame_id = "torso_link";
+        real_marker_.ns = "real_vel";
+        real_marker_.id = 1;
+        real_marker_.type = visualization_msgs::Marker::ARROW;
+        real_marker_.action = visualization_msgs::Marker::ADD;
+
+        real_marker_.pose.orientation.x = 0.0;
+        real_marker_.pose.orientation.y = 0.0;
+        real_marker_.pose.orientation.z = 0.0;
+        real_marker_.pose.orientation.w = 1.0;
+
+        real_marker_.scale.x = 0.1;
+        real_marker_.scale.y = 0.2;
+        real_marker_.scale.z = 0.2;
+
+        real_marker_.color.r = 0.0f;
+        real_marker_.color.g = 0.0f;
+        real_marker_.color.b = 1.0f;
+        real_marker_.color.a = 0.9f;
+
+        marker_array_.markers.push_back(cmd_marker_);
+        marker_array_.markers.push_back(real_marker_);
+        marker_pub_.publish(marker_array_);
+    }
+
+    visualization_msgs::MarkerArray marker_array_;
+    visualization_msgs::Marker cmd_marker_;
+    visualization_msgs::Marker real_marker_;
+    std::mutex mutex_;
+
+private:
+
+    ros::Publisher marker_pub_;
 };
 
 
