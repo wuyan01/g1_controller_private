@@ -17,14 +17,14 @@ public:
         mocap_sub_ = nh.subscribe(mocap_topic, 10, &MotionCaptureState::mocapCallback, this);
     }
 
-    nav_msgs::Odometry mocap_msg_;
+    nav_msgs::Odometry msg_;
     std::mutex mutex_;
 
 private:
     void mocapCallback(const nav_msgs::Odometry::ConstPtr& msg)
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        mocap_msg_ = *msg;
+        msg_ = *msg;
     }
 
     ros::Subscriber mocap_sub_;

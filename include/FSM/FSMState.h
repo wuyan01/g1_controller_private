@@ -60,6 +60,7 @@ public:
         if(keyboard) keyboard->update();
         republish_lowstate_ros1();
         republish_jointstate_ros1();
+        republish_baseodomstate();
     }
 
     void post_run()
@@ -76,6 +77,7 @@ public:
     static std::shared_ptr<LowCmdROS1_t> lowcmd_ros1;
     static std::shared_ptr<LowStateROS1_t> lowstate_ros1;
     static std::shared_ptr<JointStateROS1_t> jointstate_ros1;
+    static std::shared_ptr<BaseOdomState_t> baseodomstate;
     static std::string network_interface;
 
 private:
@@ -198,6 +200,67 @@ private:
         }
 
         jointstate_ros1->publish();
+    }
+
+    void republish_baseodomstate()
+    {
+        baseodomstate->msg_.header.stamp = ros::Time::now();
+
+        if(FSMState::network_interface == "lo") {
+            // position
+            baseodomstate->msg_.pose.pose.position.x =
+                sportmodestate->msg_.position()[0];
+            baseodomstate->msg_.pose.pose.position.y =
+                sportmodestate->msg_.position()[1];
+            baseodomstate->msg_.pose.pose.position.z =
+                sportmodestate->msg_.position()[2];
+
+            // orientation
+            baseodomstate->msg_.pose.pose.orientation.w =
+                lowstate->msg_.imu_state().quaternion()[0];
+            baseodomstate->msg_.pose.pose.orientation.x =
+                lowstate->msg_.imu_state().quaternion()[1];
+            baseodomstate->msg_.pose.pose.orientation.y =
+                lowstate->msg_.imu_state().quaternion()[2];
+            baseodomstate->msg_.pose.pose.orientation.z =
+                lowstate->msg_.imu_state().quaternion()[3];
+
+            // linear velocity
+            Eigen::Vector3f root_lin_vel_w(
+                sportmodestate->msg_.velocity()[0],
+                sportmodestate->msg_.velocity()[1],
+                sportmodestate->msg_.velocity()[2]
+            );
+            Eigen::Quaternionf root_quat_w(
+                lowstate->msg_.imu_state().quaternion()[0],
+                lowstate->msg_.imu_state().quaternion()[1],
+                lowstate->msg_.imu_state().quaternion()[2],
+                lowstate->msg_.imu_state().quaternion()[3]
+            );
+            Eigen::Vector3f root_lin_vel_b;
+            root_lin_vel_b = root_quat_w.conjugate() * root_lin_vel_w;
+
+            baseodomstate->msg_.twist.twist.linear.x =
+                root_lin_vel_b[0];
+            baseodomstate->msg_.twist.twist.linear.y =
+                root_lin_vel_b[1];
+            baseodomstate->msg_.twist.twist.linear.z =
+                root_lin_vel_b[2];
+
+            // angular velocity
+            baseodomstate->msg_.twist.twist.angular.x =
+                lowstate->msg_.imu_state().gyroscope()[0];
+            baseodomstate->msg_.twist.twist.angular.y =
+                lowstate->msg_.imu_state().gyroscope()[1];
+            baseodomstate->msg_.twist.twist.angular.z =
+                lowstate->msg_.imu_state().gyroscope()[2];
+        }
+        else {
+            baseodomstate->msg_.pose = motioncapturestate->msg_.pose;
+            baseodomstate->msg_.twist = motioncapturestate->msg_.twist;
+        }
+
+        baseodomstate->publish();
     }
 
     void republish_lowcmd_ros1()

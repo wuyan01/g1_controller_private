@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   nav_msgs
   sensor_msgs
+  tf2_ros
   message_generation
 )
 
@@ -96,7 +97,7 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES g1_controller_lib
-  CATKIN_DEPENDS roscpp std_msgs roslib geometry_msgs nav_msgs sensor_msgs message_runtime
+  CATKIN_DEPENDS roscpp std_msgs roslib geometry_msgs nav_msgs sensor_msgs tf2_ros message_runtime
 )
 
 # ============================================================
