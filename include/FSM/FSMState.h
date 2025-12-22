@@ -15,6 +15,7 @@ public:
         spdlog::info("Initializing State_{} ...", state_string);
 
         auto transitions = param::config["FSM"][state_string]["transitions"];
+        joint_names = param::config["robot"]["joint_names"].as<std::vector<std::string>>();
 
         if(transitions)
         {
@@ -58,6 +59,7 @@ public:
         lowstate->update();
         if(keyboard) keyboard->update();
         republish_lowstate_ros1();
+        republish_jointstate_ros1();
     }
 
     void post_run()
@@ -73,9 +75,12 @@ public:
     static std::shared_ptr<MotionCaptureState_t> motioncapturestate;
     static std::shared_ptr<LowCmdROS1_t> lowcmd_ros1;
     static std::shared_ptr<LowStateROS1_t> lowstate_ros1;
+    static std::shared_ptr<JointStateROS1_t> jointstate_ros1;
     static std::string network_interface;
 
 private:
+
+    std::vector<std::string> joint_names;
 
     void republish_lowstate_ros1()
     {
@@ -171,6 +176,28 @@ private:
             lowstate->msg_.crc();
 
         lowstate_ros1->publish();
+    }
+
+    void republish_jointstate_ros1()
+    {
+        jointstate_ros1->msg_.header.stamp = ros::Time::now();
+        jointstate_ros1->msg_.name = joint_names;
+        jointstate_ros1->msg_.position.resize(29);
+        jointstate_ros1->msg_.velocity.resize(29);
+        jointstate_ros1->msg_.effort.resize(29);
+
+        for (int i = 0; i < 29; ++i) {
+            jointstate_ros1->msg_.position[i] =
+                lowstate->msg_.motor_state()[i].q();
+
+            jointstate_ros1->msg_.velocity[i] =
+                lowstate->msg_.motor_state()[i].dq();
+
+            jointstate_ros1->msg_.effort[i] =
+                lowstate->msg_.motor_state()[i].tau_est();
+        }
+
+        jointstate_ros1->publish();
     }
 
     void republish_lowcmd_ros1()

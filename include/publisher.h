@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ros/ros.h>
+#include <sensor_msgs/JointState.h>
 #include <g1_controller/LowState.h>
 #include <g1_controller/LowCmd.h>
 #include <mutex>
@@ -57,4 +58,31 @@ public:
 private:
 
     ros::Publisher lowstate_pub_;
+};
+
+
+class JointStateROS1
+{
+public:
+    using SharedPtr = std::shared_ptr<JointStateROS1>;
+
+    JointStateROS1() {}
+
+    JointStateROS1(ros::NodeHandle& nh, const std::string& jointstate_topic = "rt/joint_states", uint32_t queue_size = 10)
+    {
+        jointstate_pub_ = nh.advertise<sensor_msgs::JointState>(jointstate_topic, queue_size);
+    }
+
+    void publish()
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        jointstate_pub_.publish(msg_);
+    }
+
+    sensor_msgs::JointState msg_;
+    std::mutex mutex_;
+
+private:
+
+    ros::Publisher jointstate_pub_;
 };

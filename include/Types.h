@@ -11,3 +11,4 @@ using SportModeState_t = unitree::robot::go2::subscription::SportModeState;
 using MotionCaptureState_t = MotionCaptureState;
 using LowCmdROS1_t = LowCmdROS1;
 using LowStateROS1_t = LowStateROS1;
+using JointStateROS1_t = JointStateROS1;

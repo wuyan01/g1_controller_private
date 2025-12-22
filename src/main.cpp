@@ -13,6 +13,7 @@ std::shared_ptr<SportModeState_t> FSMState::sportmodestate = nullptr;
 std::shared_ptr<MotionCaptureState_t> FSMState::motioncapturestate = nullptr;
 std::shared_ptr<LowCmdROS1_t> FSMState::lowcmd_ros1 = nullptr;
 std::shared_ptr<LowStateROS1_t> FSMState::lowstate_ros1 = nullptr;
+std::shared_ptr<JointStateROS1_t> FSMState::jointstate_ros1 = nullptr;
 std::string FSMState::network_interface = "lo";
 
 void init_fsm_state(ros::NodeHandle& nh)
@@ -34,6 +35,7 @@ void init_fsm_state(ros::NodeHandle& nh)
     );
     FSMState::lowcmd_ros1 = std::make_shared<LowCmdROS1_t>(nh, "rt/lowcmd");
     FSMState::lowstate_ros1 = std::make_shared<LowStateROS1_t>(nh, "rt/lowstate");
+    FSMState::jointstate_ros1 = std::make_shared<JointStateROS1_t>(nh, "rt/joint_states");
     spdlog::info("Waiting for connection to robot...");
     FSMState::lowstate->wait_for_connection();
     spdlog::info("Connected to robot.");
