@@ -59,8 +59,8 @@ public:
         lowstate->update();
         if(keyboard) keyboard->update();
         republish_lowstate_ros1();
-        republish_jointstate_ros1();
-        republish_baseodomstate();
+        republish_jointstate();
+        republish_baseodom();
     }
 
     void post_run()
@@ -76,8 +76,8 @@ public:
     static std::shared_ptr<MotionCaptureState_t> motioncapturestate;
     static std::shared_ptr<LowCmdROS1_t> lowcmd_ros1;
     static std::shared_ptr<LowStateROS1_t> lowstate_ros1;
-    static std::shared_ptr<JointStateROS1_t> jointstate_ros1;
-    static std::shared_ptr<BaseOdomState_t> baseodomstate;
+    static std::shared_ptr<JointState_t> jointstate;
+    static std::shared_ptr<BaseOdom_t> baseodom;
     static std::string network_interface;
 
 private:
@@ -180,49 +180,49 @@ private:
         lowstate_ros1->publish();
     }
 
-    void republish_jointstate_ros1()
+    void republish_jointstate()
     {
-        jointstate_ros1->msg_.header.stamp = ros::Time::now();
-        jointstate_ros1->msg_.name = joint_names;
-        jointstate_ros1->msg_.position.resize(29);
-        jointstate_ros1->msg_.velocity.resize(29);
-        jointstate_ros1->msg_.effort.resize(29);
+        jointstate->msg_.header.stamp = ros::Time::now();
+        jointstate->msg_.name = joint_names;
+        jointstate->msg_.position.resize(29);
+        jointstate->msg_.velocity.resize(29);
+        jointstate->msg_.effort.resize(29);
 
         for (int i = 0; i < 29; ++i) {
-            jointstate_ros1->msg_.position[i] =
+            jointstate->msg_.position[i] =
                 lowstate->msg_.motor_state()[i].q();
 
-            jointstate_ros1->msg_.velocity[i] =
+            jointstate->msg_.velocity[i] =
                 lowstate->msg_.motor_state()[i].dq();
 
-            jointstate_ros1->msg_.effort[i] =
+            jointstate->msg_.effort[i] =
                 lowstate->msg_.motor_state()[i].tau_est();
         }
 
-        jointstate_ros1->publish();
+        jointstate->publish();
     }
 
-    void republish_baseodomstate()
+    void republish_baseodom()
     {
-        baseodomstate->msg_.header.stamp = ros::Time::now();
+        baseodom->msg_.header.stamp = ros::Time::now();
 
         if(FSMState::network_interface == "lo") {
             // position
-            baseodomstate->msg_.pose.pose.position.x =
+            baseodom->msg_.pose.pose.position.x =
                 sportmodestate->msg_.position()[0];
-            baseodomstate->msg_.pose.pose.position.y =
+            baseodom->msg_.pose.pose.position.y =
                 sportmodestate->msg_.position()[1];
-            baseodomstate->msg_.pose.pose.position.z =
+            baseodom->msg_.pose.pose.position.z =
                 sportmodestate->msg_.position()[2];
 
             // orientation
-            baseodomstate->msg_.pose.pose.orientation.w =
+            baseodom->msg_.pose.pose.orientation.w =
                 lowstate->msg_.imu_state().quaternion()[0];
-            baseodomstate->msg_.pose.pose.orientation.x =
+            baseodom->msg_.pose.pose.orientation.x =
                 lowstate->msg_.imu_state().quaternion()[1];
-            baseodomstate->msg_.pose.pose.orientation.y =
+            baseodom->msg_.pose.pose.orientation.y =
                 lowstate->msg_.imu_state().quaternion()[2];
-            baseodomstate->msg_.pose.pose.orientation.z =
+            baseodom->msg_.pose.pose.orientation.z =
                 lowstate->msg_.imu_state().quaternion()[3];
 
             // linear velocity
@@ -240,27 +240,27 @@ private:
             Eigen::Vector3f root_lin_vel_b;
             root_lin_vel_b = root_quat_w.conjugate() * root_lin_vel_w;
 
-            baseodomstate->msg_.twist.twist.linear.x =
+            baseodom->msg_.twist.twist.linear.x =
                 root_lin_vel_b[0];
-            baseodomstate->msg_.twist.twist.linear.y =
+            baseodom->msg_.twist.twist.linear.y =
                 root_lin_vel_b[1];
-            baseodomstate->msg_.twist.twist.linear.z =
+            baseodom->msg_.twist.twist.linear.z =
                 root_lin_vel_b[2];
 
             // angular velocity
-            baseodomstate->msg_.twist.twist.angular.x =
+            baseodom->msg_.twist.twist.angular.x =
                 lowstate->msg_.imu_state().gyroscope()[0];
-            baseodomstate->msg_.twist.twist.angular.y =
+            baseodom->msg_.twist.twist.angular.y =
                 lowstate->msg_.imu_state().gyroscope()[1];
-            baseodomstate->msg_.twist.twist.angular.z =
+            baseodom->msg_.twist.twist.angular.z =
                 lowstate->msg_.imu_state().gyroscope()[2];
         }
         else {
-            baseodomstate->msg_.pose = motioncapturestate->msg_.pose;
-            baseodomstate->msg_.twist = motioncapturestate->msg_.twist;
+            baseodom->msg_.pose = motioncapturestate->msg_.pose;
+            baseodom->msg_.twist = motioncapturestate->msg_.twist;
         }
 
-        baseodomstate->publish();
+        baseodom->publish();
     }
 
     void republish_lowcmd_ros1()

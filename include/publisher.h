@@ -67,14 +67,14 @@ private:
 };
 
 
-class JointStateROS1
+class JointState
 {
 public:
-    using SharedPtr = std::shared_ptr<JointStateROS1>;
+    using SharedPtr = std::shared_ptr<JointState>;
 
-    JointStateROS1() {}
+    JointState() {}
 
-    JointStateROS1(ros::NodeHandle& nh, const std::string& jointstate_topic = "rt/joint_states", uint32_t queue_size = 10)
+    JointState(ros::NodeHandle& nh, const std::string& jointstate_topic = "rt/joint_states", uint32_t queue_size = 10)
     {
         jointstate_pub_ = nh.advertise<sensor_msgs::JointState>(jointstate_topic, queue_size);
     }
@@ -94,14 +94,14 @@ private:
 };
 
 
-class BaseOdomState
+class BaseOdom
 {
 public:
-    using SharedPtr = std::shared_ptr<BaseOdomState>;
+    using SharedPtr = std::shared_ptr<BaseOdom>;
 
-    BaseOdomState() : tf_listener_(tf_buffer_) {}
+    BaseOdom() : tf_listener_(tf_buffer_) {}
 
-    BaseOdomState(ros::NodeHandle& nh, const std::string& odom_topic = "rt/base_odom", uint32_t queue_size = 10)
+    BaseOdom(ros::NodeHandle& nh, const std::string& odom_topic = "rt/base_odom", uint32_t queue_size = 10)
         : tf_listener_(tf_buffer_)
     {
         odom_pub_ = nh.advertise<nav_msgs::Odometry>(odom_topic, queue_size);
