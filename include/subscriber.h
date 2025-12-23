@@ -15,6 +15,7 @@ public:
     MotionCaptureState(ros::NodeHandle& nh, const std::string& mocap_topic = "/qualisys/base/odom")
     {
         mocap_sub_ = nh.subscribe(mocap_topic, 10, &MotionCaptureState::mocapCallback, this);
+        msg_.pose.pose.orientation.w = 1.0;
     }
 
     nav_msgs::Odometry msg_;
