@@ -42,7 +42,7 @@ State_RLBase::State_RLBase(int state_mode, std::string state_string)
 
     env = std::make_unique<isaaclab::ManagerBasedRLEnv>(
         YAML::LoadFile(policy_dir / "params" / "deploy.yaml"),
-        std::make_shared<unitree::G1Articulation<LowState_t::SharedPtr, TorsoLinkOdometry_t::SharedPtr>>(FSMState::lowstate, FSMState::torsolinkodometry)
+        std::make_shared<unitree::G1Articulation<LowState_t::SharedPtr, TorsoOdometry_t::SharedPtr>>(FSMState::lowstate, FSMState::torsoodometry)
     );
     env->alg = std::make_unique<isaaclab::OrtRunner>(policy_dir / "exported" / "policy.onnx");
 

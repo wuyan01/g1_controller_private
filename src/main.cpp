@@ -11,11 +11,16 @@ std::shared_ptr<LowState_t> FSMState::lowstate = nullptr;
 std::shared_ptr<Keyboard> FSMState::keyboard = std::make_shared<Keyboard>();
 std::shared_ptr<SportModeState_t> FSMState::sportmodestate = nullptr;
 std::shared_ptr<MotionCaptureState_t> FSMState::motioncapturestate = nullptr;
+std::shared_ptr<FastLioState_t> FSMState::fastliostate = nullptr;
 std::shared_ptr<LowCmdROS1_t> FSMState::lowcmd_ros1 = nullptr;
 std::shared_ptr<LowStateROS1_t> FSMState::lowstate_ros1 = nullptr;
 std::shared_ptr<JointState_t> FSMState::jointstate = nullptr;
 std::shared_ptr<VelocityMarkers_t> State_RLBase::velocitymarkers = nullptr;
-std::shared_ptr<TorsoLinkOdometry_t> FSMState::torsolinkodometry = nullptr;
+std::shared_ptr<PoseSourceOdom_t> FSMState::sportmodeodom = nullptr;
+std::shared_ptr<PoseSourceOdom_t> FSMState::motioncaptureodom = nullptr;
+std::shared_ptr<PoseSourceOdom_t> FSMState::lidarodom = nullptr;
+std::shared_ptr<PelvisOdometryFusion_t> FSMState::pelvisodometryfusion = nullptr;
+std::shared_ptr<TorsoOdometry_t> FSMState::torsoodometry = nullptr;
 std::string FSMState::network_interface = "lo";
 
 void init_fsm_state(ros::NodeHandle& nh)
@@ -31,15 +36,17 @@ void init_fsm_state(ros::NodeHandle& nh)
     FSMState::lowcmd = std::make_unique<LowCmd_t>();
     FSMState::lowstate = std::make_shared<LowState_t>();
     FSMState::sportmodestate = std::make_shared<SportModeState_t>();
-    FSMState::motioncapturestate = std::make_shared<MotionCaptureState_t>(
-        nh,
-        "/qualisys/base/odom"
-    );
-    FSMState::lowcmd_ros1 = std::make_shared<LowCmdROS1_t>(nh, "rt/lowcmd");
-    FSMState::lowstate_ros1 = std::make_shared<LowStateROS1_t>(nh, "rt/lowstate");
-    FSMState::jointstate = std::make_shared<JointState_t>(nh, "rt/joint_states");
-    State_RLBase::velocitymarkers = std::make_shared<VelocityMarkers_t>(nh, "rt/velocity_markers");
-    FSMState::torsolinkodometry = std::make_shared<TorsoLinkOdometry_t>(nh, "rt/torso_link_odometry");
+    FSMState::motioncapturestate = std::make_shared<MotionCaptureState_t>(nh, "/qualisys/base/odom");
+    FSMState::fastliostate = std::make_shared<FastLioState_t>(nh, "/Odometry_loc");
+    FSMState::lowcmd_ros1 = std::make_shared<LowCmdROS1_t>(nh, "lowcmd");
+    FSMState::lowstate_ros1 = std::make_shared<LowStateROS1_t>(nh, "lowstate");
+    FSMState::jointstate = std::make_shared<JointState_t>(nh, "joint_states");
+    State_RLBase::velocitymarkers = std::make_shared<VelocityMarkers_t>(nh, "velocity_markers");
+    FSMState::sportmodeodom = std::make_shared<PoseSourceOdom_t>(nh, "sport_mode/odom");
+    FSMState::motioncaptureodom = std::make_shared<PoseSourceOdom_t>(nh, "motion_capture/odom");
+    FSMState::lidarodom = std::make_shared<PoseSourceOdom_t>(nh, "lidar/odom");
+    FSMState::pelvisodometryfusion = std::make_shared<PelvisOdometryFusion_t>(nh, "pose_source/odom", "pelvis/odom");
+    FSMState::torsoodometry = std::make_shared<TorsoOdometry_t>(nh, "torso_link_odom");
     spdlog::info("Waiting for connection to robot...");
     FSMState::lowstate->wait_for_connection();
     spdlog::info("Connected to robot.");

@@ -60,7 +60,7 @@ public:
         if(keyboard) keyboard->update();
         republish_lowstate_ros1();
         republish_jointstate();
-        republish_torsolinkodometry();
+        republish_posesourceodom();
     }
 
     void post_run()
@@ -74,10 +74,15 @@ public:
     static std::shared_ptr<Keyboard> keyboard;
     static std::shared_ptr<SportModeState_t> sportmodestate;
     static std::shared_ptr<MotionCaptureState_t> motioncapturestate;
+    static std::shared_ptr<FastLioState_t> fastliostate;
     static std::shared_ptr<LowCmdROS1_t> lowcmd_ros1;
     static std::shared_ptr<LowStateROS1_t> lowstate_ros1;
     static std::shared_ptr<JointState_t> jointstate;
-    static std::shared_ptr<TorsoLinkOdometry_t> torsolinkodometry;
+    static std::shared_ptr<PoseSourceOdom_t> sportmodeodom;
+    static std::shared_ptr<PoseSourceOdom_t> motioncaptureodom;
+    static std::shared_ptr<PoseSourceOdom_t> lidarodom;
+    static std::shared_ptr<PelvisOdometryFusion_t> pelvisodometryfusion;
+    static std::shared_ptr<TorsoOdometry_t> torsoodometry;
     static std::string network_interface;
 
 private:
@@ -202,65 +207,77 @@ private:
         jointstate->publish();
     }
 
-    void republish_torsolinkodometry()
+    void republish_posesourceodom()
     {
-        torsolinkodometry->msg_.header.stamp = ros::Time::now();
+        sportmodeodom->msg_.header.stamp = ros::Time::now();
 
-        if(FSMState::network_interface == "lo") {
-            // position
-            torsolinkodometry->msg_.pose.pose.position.x =
-                sportmodestate->msg_.position()[0];
-            torsolinkodometry->msg_.pose.pose.position.y =
-                sportmodestate->msg_.position()[1];
-            torsolinkodometry->msg_.pose.pose.position.z =
-                sportmodestate->msg_.position()[2];
+        sportmodeodom->msg_.header.frame_id = "odom";
+        sportmodeodom->msg_.child_frame_id = "torso_link";
+        // position
+        sportmodeodom->msg_.pose.pose.position.x =
+            sportmodestate->msg_.position()[0];
+        sportmodeodom->msg_.pose.pose.position.y =
+            sportmodestate->msg_.position()[1];
+        sportmodeodom->msg_.pose.pose.position.z =
+            sportmodestate->msg_.position()[2];
 
-            // orientation
-            torsolinkodometry->msg_.pose.pose.orientation.w =
-                lowstate->msg_.imu_state().quaternion()[0];
-            torsolinkodometry->msg_.pose.pose.orientation.x =
-                lowstate->msg_.imu_state().quaternion()[1];
-            torsolinkodometry->msg_.pose.pose.orientation.y =
-                lowstate->msg_.imu_state().quaternion()[2];
-            torsolinkodometry->msg_.pose.pose.orientation.z =
-                lowstate->msg_.imu_state().quaternion()[3];
+        // orientation
+        sportmodeodom->msg_.pose.pose.orientation.w =
+            lowstate->msg_.imu_state().quaternion()[0];
+        sportmodeodom->msg_.pose.pose.orientation.x =
+            lowstate->msg_.imu_state().quaternion()[1];
+        sportmodeodom->msg_.pose.pose.orientation.y =
+            lowstate->msg_.imu_state().quaternion()[2];
+        sportmodeodom->msg_.pose.pose.orientation.z =
+            lowstate->msg_.imu_state().quaternion()[3];
 
-            // linear velocity
-            Eigen::Vector3f root_lin_vel_w(
-                sportmodestate->msg_.velocity()[0],
-                sportmodestate->msg_.velocity()[1],
-                sportmodestate->msg_.velocity()[2]
-            );
-            Eigen::Quaternionf root_quat_w(
-                lowstate->msg_.imu_state().quaternion()[0],
-                lowstate->msg_.imu_state().quaternion()[1],
-                lowstate->msg_.imu_state().quaternion()[2],
-                lowstate->msg_.imu_state().quaternion()[3]
-            );
-            Eigen::Vector3f root_lin_vel_b;
-            root_lin_vel_b = root_quat_w.conjugate() * root_lin_vel_w;
+        // linear velocity
+        Eigen::Vector3f root_lin_vel_w(
+            sportmodestate->msg_.velocity()[0],
+            sportmodestate->msg_.velocity()[1],
+            sportmodestate->msg_.velocity()[2]
+        );
+        Eigen::Quaternionf root_quat_w(
+            lowstate->msg_.imu_state().quaternion()[0],
+            lowstate->msg_.imu_state().quaternion()[1],
+            lowstate->msg_.imu_state().quaternion()[2],
+            lowstate->msg_.imu_state().quaternion()[3]
+        );
+        Eigen::Vector3f root_lin_vel_b;
+        root_lin_vel_b = root_quat_w.conjugate() * root_lin_vel_w;
 
-            torsolinkodometry->msg_.twist.twist.linear.x =
-                root_lin_vel_b[0];
-            torsolinkodometry->msg_.twist.twist.linear.y =
-                root_lin_vel_b[1];
-            torsolinkodometry->msg_.twist.twist.linear.z =
-                root_lin_vel_b[2];
+        sportmodeodom->msg_.twist.twist.linear.x =
+            root_lin_vel_b[0];
+        sportmodeodom->msg_.twist.twist.linear.y =
+            root_lin_vel_b[1];
+        sportmodeodom->msg_.twist.twist.linear.z =
+            root_lin_vel_b[2];
 
-            // angular velocity
-            torsolinkodometry->msg_.twist.twist.angular.x =
-                lowstate->msg_.imu_state().gyroscope()[0];
-            torsolinkodometry->msg_.twist.twist.angular.y =
-                lowstate->msg_.imu_state().gyroscope()[1];
-            torsolinkodometry->msg_.twist.twist.angular.z =
-                lowstate->msg_.imu_state().gyroscope()[2];
-        }
-        else {
-            torsolinkodometry->msg_.pose = motioncapturestate->msg_.pose;
-            torsolinkodometry->msg_.twist = motioncapturestate->msg_.twist;
-        }
+        // angular velocity
+        sportmodeodom->msg_.twist.twist.angular.x =
+            lowstate->msg_.imu_state().gyroscope()[0];
+        sportmodeodom->msg_.twist.twist.angular.y =
+            lowstate->msg_.imu_state().gyroscope()[1];
+        sportmodeodom->msg_.twist.twist.angular.z =
+            lowstate->msg_.imu_state().gyroscope()[2];
+        
+        motioncaptureodom->msg_.header.stamp = ros::Time::now();
+        motioncaptureodom->msg_.header.frame_id = "odom";
+        motioncaptureodom->msg_.child_frame_id = "torso_link";
+        motioncaptureodom->msg_.pose = motioncapturestate->msg_.pose;
+        motioncaptureodom->msg_.twist = motioncapturestate->msg_.twist;
 
-        torsolinkodometry->publish();
+        lidarodom->msg_.header.stamp = ros::Time::now();
+        lidarodom->msg_.header.frame_id = "odom";
+        lidarodom->msg_.child_frame_id = "mid360_link";
+        lidarodom->msg_.pose = fastliostate->pub_msg_.pose;
+        lidarodom->msg_.twist = fastliostate->pub_msg_.twist;
+
+        sportmodeodom->publish();
+        motioncaptureodom->publish();
+        lidarodom->publish();
+
+        torsoodometry->publish();
     }
 
     void republish_lowcmd_ros1()
