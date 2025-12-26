@@ -49,7 +49,7 @@ public:
     {
         fastlio_sub_ = nh.subscribe(fastlio_topic, 10, &FastLioState::fastlioCallback, this);
         sub_msg_.pose.pose.orientation.w = 1.0;
-        pub_msg_.pose.pose.orientation.w = 1.0;
+        pub_msg_.pose.pose.orientation.x = 1.0;
     }
 
     nav_msgs::Odometry sub_msg_;
