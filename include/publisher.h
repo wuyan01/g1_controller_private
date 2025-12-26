@@ -468,11 +468,18 @@ public:
     TorsoOdometry() : tf_listener_(tf_buffer_) {}
 
     TorsoOdometry(ros::NodeHandle& nh,
-                  const std::string& odom_topic = "torso_link/odom",
+                  const std::string& input_odom_topic  = "pose_source/odom",
+                  const std::string& output_odom_topic = "torso_link/odom",
                   uint32_t queue_size = 10)
         : tf_listener_(tf_buffer_)
     {
-        odom_pub_ = nh.advertise<nav_msgs::Odometry>(odom_topic, queue_size);
+        odom_sub_ = nh.subscribe(input_odom_topic,
+                                 queue_size,
+                                 &TorsoOdometry::odomCallback,
+                                 this);
+
+        torso_odom_pub_ = nh.advertise<nav_msgs::Odometry>(output_odom_topic,
+                                                           queue_size);
 
         last_valid_ = false;
 
@@ -483,7 +490,21 @@ public:
         msg_.twist.covariance.fill(0.0);
     }
 
-    void publish()
+    // Public odometry output (as requested)
+    nav_msgs::Odometry msg_;
+    std::mutex mutex_;
+
+private:
+    ros::Subscriber odom_sub_;
+    ros::Publisher torso_odom_pub_;
+    tf2_ros::Buffer tf_buffer_;
+    tf2_ros::TransformListener tf_listener_;
+
+    bool last_valid_;
+    ros::Time last_stamp_;
+    tf2::Transform last_T_odom_torso_;
+
+    void odomCallback(const nav_msgs::OdometryConstPtr& msg)
     {
         std::lock_guard<std::mutex> lock(mutex_);
 
@@ -491,6 +512,13 @@ public:
         const std::string child_frame  = "torso_link";
 
         ros::Time t = ros::Time(0);
+
+        if (msg->header.frame_id == parent_frame &&
+            msg->child_frame_id  == child_frame)
+        {
+            torso_odom_pub_.publish(msg);
+            return;
+        }
 
         geometry_msgs::TransformStamped odom_T_torso_msg;
         try
@@ -579,7 +607,7 @@ public:
         }
 
         // Publish
-        odom_pub_.publish(msg_);
+        torso_odom_pub_.publish(msg_);
 
         // Update last state
         last_T_odom_torso_ = T_odom_torso;
@@ -597,16 +625,4 @@ public:
         return p;
     }
 
-    // Public odometry output (as requested)
-    nav_msgs::Odometry msg_;
-    std::mutex mutex_;
-
-private:
-    ros::Publisher odom_pub_;
-    tf2_ros::Buffer tf_buffer_;
-    tf2_ros::TransformListener tf_listener_;
-
-    bool last_valid_;
-    ros::Time last_stamp_;
-    tf2::Transform last_T_odom_torso_;
 };

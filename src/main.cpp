@@ -46,7 +46,7 @@ void init_fsm_state(ros::NodeHandle& nh)
     FSMState::motioncaptureodom = std::make_shared<PoseSourceOdom_t>(nh, "motion_capture/odom");
     FSMState::lidarodom = std::make_shared<PoseSourceOdom_t>(nh, "lidar/odom");
     FSMState::pelvisodometryfusion = std::make_shared<PelvisOdometryFusion_t>(nh, "pose_source/odom", "pelvis/odom");
-    FSMState::torsoodometry = std::make_shared<TorsoOdometry_t>(nh, "torso_link_odom");
+    FSMState::torsoodometry = std::make_shared<TorsoOdometry_t>(nh, "pose_source/odom", "torso_link_odom");
     spdlog::info("Waiting for connection to robot...");
     FSMState::lowstate->wait_for_connection();
     spdlog::info("Connected to robot.");

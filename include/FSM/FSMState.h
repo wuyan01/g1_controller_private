@@ -276,8 +276,6 @@ private:
         sportmodeodom->publish();
         motioncaptureodom->publish();
         lidarodom->publish();
-
-        torsoodometry->publish();
     }
 
     void republish_lowcmd_ros1()
