@@ -15,7 +15,7 @@ std::shared_ptr<LowCmdROS1_t> FSMState::lowcmd_ros1 = nullptr;
 std::shared_ptr<LowStateROS1_t> FSMState::lowstate_ros1 = nullptr;
 std::shared_ptr<JointState_t> FSMState::jointstate = nullptr;
 std::shared_ptr<VelocityMarkers_t> State_RLBase::velocitymarkers = nullptr;
-std::shared_ptr<BaseOdom_t> FSMState::baseodom = nullptr;
+std::shared_ptr<TorsoLinkOdometry_t> FSMState::torsolinkodometry = nullptr;
 std::string FSMState::network_interface = "lo";
 
 void init_fsm_state(ros::NodeHandle& nh)
@@ -39,7 +39,7 @@ void init_fsm_state(ros::NodeHandle& nh)
     FSMState::lowstate_ros1 = std::make_shared<LowStateROS1_t>(nh, "rt/lowstate");
     FSMState::jointstate = std::make_shared<JointState_t>(nh, "rt/joint_states");
     State_RLBase::velocitymarkers = std::make_shared<VelocityMarkers_t>(nh, "rt/velocity_markers");
-    FSMState::baseodom = std::make_shared<BaseOdom_t>(nh, "rt/base_odom");
+    FSMState::torsolinkodometry = std::make_shared<TorsoLinkOdometry_t>(nh, "rt/torso_link_odometry");
     spdlog::info("Waiting for connection to robot...");
     FSMState::lowstate->wait_for_connection();
     spdlog::info("Connected to robot.");

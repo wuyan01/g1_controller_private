@@ -13,4 +13,4 @@ using LowCmdROS1_t = LowCmdROS1;
 using LowStateROS1_t = LowStateROS1;
 using JointState_t = JointState;
 using VelocityMarkers_t = VelocityMarkers;
-using BaseOdom_t = BaseOdom;
+using TorsoLinkOdometry_t = TorsoLinkOdometry;

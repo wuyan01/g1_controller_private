@@ -173,23 +173,23 @@ private:
 };
 
 
-class BaseOdom
+class TorsoLinkOdometry
 {
 public:
-    using SharedPtr = std::shared_ptr<BaseOdom>;
+    using SharedPtr = std::shared_ptr<TorsoLinkOdometry>;
 
-    BaseOdom() : tf_listener_(tf_buffer_) {}
+    TorsoLinkOdometry() : tf_listener_(tf_buffer_) {}
 
-    BaseOdom(ros::NodeHandle& nh, const std::string& odom_topic = "rt/base_odom", uint32_t queue_size = 10)
+    TorsoLinkOdometry(ros::NodeHandle& nh, const std::string& torso_link_odometry_topic = "rt/torso_link_odometry", uint32_t queue_size = 10)
         : tf_listener_(tf_buffer_)
     {
-        odom_pub_ = nh.advertise<nav_msgs::Odometry>(odom_topic, queue_size);
+        torso_link_odometry_pub_ = nh.advertise<nav_msgs::Odometry>(torso_link_odometry_topic, queue_size);
     }
 
     void publish()
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        odom_pub_.publish(msg_);
+        torso_link_odometry_pub_.publish(msg_);
         publishOdomToPelvisTF();
     }
 
@@ -199,7 +199,7 @@ public:
 
 private:
 
-    ros::Publisher odom_pub_;
+    ros::Publisher torso_link_odometry_pub_;
     tf2_ros::TransformBroadcaster br_;
     tf2_ros::Buffer tf_buffer_;
     tf2_ros::TransformListener tf_listener_;

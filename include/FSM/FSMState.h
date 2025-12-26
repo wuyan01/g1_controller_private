@@ -60,7 +60,7 @@ public:
         if(keyboard) keyboard->update();
         republish_lowstate_ros1();
         republish_jointstate();
-        republish_baseodom();
+        republish_torsolinkodometry();
     }
 
     void post_run()
@@ -77,7 +77,7 @@ public:
     static std::shared_ptr<LowCmdROS1_t> lowcmd_ros1;
     static std::shared_ptr<LowStateROS1_t> lowstate_ros1;
     static std::shared_ptr<JointState_t> jointstate;
-    static std::shared_ptr<BaseOdom_t> baseodom;
+    static std::shared_ptr<TorsoLinkOdometry_t> torsolinkodometry;
     static std::string network_interface;
 
 private:
@@ -202,27 +202,27 @@ private:
         jointstate->publish();
     }
 
-    void republish_baseodom()
+    void republish_torsolinkodometry()
     {
-        baseodom->msg_.header.stamp = ros::Time::now();
+        torsolinkodometry->msg_.header.stamp = ros::Time::now();
 
         if(FSMState::network_interface == "lo") {
             // position
-            baseodom->msg_.pose.pose.position.x =
+            torsolinkodometry->msg_.pose.pose.position.x =
                 sportmodestate->msg_.position()[0];
-            baseodom->msg_.pose.pose.position.y =
+            torsolinkodometry->msg_.pose.pose.position.y =
                 sportmodestate->msg_.position()[1];
-            baseodom->msg_.pose.pose.position.z =
+            torsolinkodometry->msg_.pose.pose.position.z =
                 sportmodestate->msg_.position()[2];
 
             // orientation
-            baseodom->msg_.pose.pose.orientation.w =
+            torsolinkodometry->msg_.pose.pose.orientation.w =
                 lowstate->msg_.imu_state().quaternion()[0];
-            baseodom->msg_.pose.pose.orientation.x =
+            torsolinkodometry->msg_.pose.pose.orientation.x =
                 lowstate->msg_.imu_state().quaternion()[1];
-            baseodom->msg_.pose.pose.orientation.y =
+            torsolinkodometry->msg_.pose.pose.orientation.y =
                 lowstate->msg_.imu_state().quaternion()[2];
-            baseodom->msg_.pose.pose.orientation.z =
+            torsolinkodometry->msg_.pose.pose.orientation.z =
                 lowstate->msg_.imu_state().quaternion()[3];
 
             // linear velocity
@@ -240,27 +240,27 @@ private:
             Eigen::Vector3f root_lin_vel_b;
             root_lin_vel_b = root_quat_w.conjugate() * root_lin_vel_w;
 
-            baseodom->msg_.twist.twist.linear.x =
+            torsolinkodometry->msg_.twist.twist.linear.x =
                 root_lin_vel_b[0];
-            baseodom->msg_.twist.twist.linear.y =
+            torsolinkodometry->msg_.twist.twist.linear.y =
                 root_lin_vel_b[1];
-            baseodom->msg_.twist.twist.linear.z =
+            torsolinkodometry->msg_.twist.twist.linear.z =
                 root_lin_vel_b[2];
 
             // angular velocity
-            baseodom->msg_.twist.twist.angular.x =
+            torsolinkodometry->msg_.twist.twist.angular.x =
                 lowstate->msg_.imu_state().gyroscope()[0];
-            baseodom->msg_.twist.twist.angular.y =
+            torsolinkodometry->msg_.twist.twist.angular.y =
                 lowstate->msg_.imu_state().gyroscope()[1];
-            baseodom->msg_.twist.twist.angular.z =
+            torsolinkodometry->msg_.twist.twist.angular.z =
                 lowstate->msg_.imu_state().gyroscope()[2];
         }
         else {
-            baseodom->msg_.pose = motioncapturestate->msg_.pose;
-            baseodom->msg_.twist = motioncapturestate->msg_.twist;
+            torsolinkodometry->msg_.pose = motioncapturestate->msg_.pose;
+            torsolinkodometry->msg_.twist = motioncapturestate->msg_.twist;
         }
 
-        baseodom->publish();
+        torsolinkodometry->publish();
     }
 
     void republish_lowcmd_ros1()
