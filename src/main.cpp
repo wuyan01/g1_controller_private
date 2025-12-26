@@ -19,8 +19,8 @@ std::shared_ptr<VelocityMarkers_t> State_RLBase::velocitymarkers = nullptr;
 std::shared_ptr<PoseSourceOdom_t> FSMState::sportmodeodom = nullptr;
 std::shared_ptr<PoseSourceOdom_t> FSMState::motioncaptureodom = nullptr;
 std::shared_ptr<PoseSourceOdom_t> FSMState::lidarodom = nullptr;
-std::shared_ptr<PelvisOdometryFusion_t> FSMState::pelvisodometryfusion = nullptr;
-std::shared_ptr<TorsoOdometry_t> FSMState::torsoodometry = nullptr;
+std::shared_ptr<OdometryFusion_t> FSMState::pelvisodometryfusion = nullptr;
+std::shared_ptr<OdometryFusion_t> FSMState::torsoodometryfusion = nullptr;
 std::string FSMState::network_interface = "lo";
 
 void init_fsm_state(ros::NodeHandle& nh)
@@ -45,8 +45,8 @@ void init_fsm_state(ros::NodeHandle& nh)
     FSMState::sportmodeodom = std::make_shared<PoseSourceOdom_t>(nh, "sport_mode/odom");
     FSMState::motioncaptureodom = std::make_shared<PoseSourceOdom_t>(nh, "motion_capture/odom");
     FSMState::lidarodom = std::make_shared<PoseSourceOdom_t>(nh, "lidar/odom");
-    FSMState::pelvisodometryfusion = std::make_shared<PelvisOdometryFusion_t>(nh, "pose_source/odom", "pelvis/odom");
-    FSMState::torsoodometry = std::make_shared<TorsoOdometry_t>(nh, "pose_source/odom", "torso_link_odom");
+    FSMState::pelvisodometryfusion = std::make_shared<OdometryFusion_t>(nh, "pose_source/odom", "pelvis");
+    FSMState::torsoodometryfusion = std::make_shared<OdometryFusion_t>(nh, "pose_source/odom", "torso_link");
     spdlog::info("Waiting for connection to robot...");
     FSMState::lowstate->wait_for_connection();
     spdlog::info("Connected to robot.");

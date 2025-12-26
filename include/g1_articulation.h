@@ -10,14 +10,14 @@
 namespace unitree
 {
 
-template <typename LowStatePtr, typename TorsoOdometryPtr>
+template <typename LowStatePtr, typename OdometryFusionPtr>
 class G1Articulation : public BaseArticulation<LowStatePtr>
 {
 public:
     using Base = BaseArticulation<LowStatePtr>;
 
-    G1Articulation(LowStatePtr lowstate_, TorsoOdometryPtr torsoodometry_)
-    : Base(lowstate_), torsoodometry(torsoodometry_)
+    G1Articulation(LowStatePtr lowstate_, OdometryFusionPtr torsoodometry_)
+    : Base(lowstate_), torsoodometryfusion(torsoodometry_)
     {
     }
 
@@ -26,9 +26,9 @@ public:
         Base::update();
 
         Eigen::Vector3f root_lin_vel_b(
-            torsoodometry->msg_.twist.twist.linear.x,
-            torsoodometry->msg_.twist.twist.linear.y,
-            torsoodometry->msg_.twist.twist.linear.z
+            torsoodometryfusion->msg_.twist.twist.linear.x,
+            torsoodometryfusion->msg_.twist.twist.linear.y,
+            torsoodometryfusion->msg_.twist.twist.linear.z
         );
         // base_linear_velocity
         for(int i(0); i<3; i++) {
@@ -36,7 +36,7 @@ public:
         }
     }
 
-    TorsoOdometryPtr torsoodometry;
+    OdometryFusionPtr torsoodometryfusion;
 };
 
 }

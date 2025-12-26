@@ -15,5 +15,4 @@ using LowStateROS1_t = LowStateROS1;
 using JointState_t = JointState;
 using VelocityMarkers_t = VelocityMarkers;
 using PoseSourceOdom_t = PoseSourceOdom;
-using PelvisOdometryFusion_t = PelvisOdometryFusion;
-using TorsoOdometry_t = TorsoOdometry;
+using OdometryFusion_t = OdometryFusion;
