@@ -48,19 +48,16 @@ public:
         : tf_listener_(tf_buffer_)
     {
         fastlio_sub_ = nh.subscribe(fastlio_topic, 10, &FastLioState::fastlioCallback, this);
-        sub_msg_.pose.pose.orientation.w = 1.0;
-        pub_msg_.pose.pose.orientation.x = 1.0;
+        msg_.pose.pose.orientation.x = 1.0;
     }
 
-    nav_msgs::Odometry sub_msg_;
-    nav_msgs::Odometry pub_msg_;
+    nav_msgs::Odometry msg_;
     std::mutex mutex_;
 
 private:
     void fastlioCallback(const nav_msgs::Odometry::ConstPtr& msg)
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        sub_msg_ = *msg;
 
         geometry_msgs::TransformStamped odom_T_camera_init;
         odom_T_camera_init.header.stamp = msg->header.stamp;
@@ -118,7 +115,7 @@ private:
         }
         tf2::Transform T_odom_mid360_link_inv;
         tf2::fromMsg(odom_T_mid360_link_inv.transform, T_odom_mid360_link_inv);
-        pub_msg_.pose.pose = transformToPoseMsg(T_odom_mid360_link_inv);
+        msg_.pose.pose = transformToPoseMsg(T_odom_mid360_link_inv);
 
     }
 

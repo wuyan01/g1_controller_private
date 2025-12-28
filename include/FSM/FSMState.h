@@ -270,8 +270,8 @@ private:
         lidarodom->msg_.header.stamp = ros::Time::now();
         lidarodom->msg_.header.frame_id = "odom";
         lidarodom->msg_.child_frame_id = "mid360_link";
-        lidarodom->msg_.pose = fastliostate->pub_msg_.pose;
-        lidarodom->msg_.twist = fastliostate->pub_msg_.twist;
+        lidarodom->msg_.pose = fastliostate->msg_.pose;
+        lidarodom->msg_.twist = fastliostate->msg_.twist;
 
         sportmodeodom->publish();
         motioncaptureodom->publish();
