@@ -260,6 +260,17 @@ private:
         if (source_link == output_odom_frame_)
         {
             msg_ = *msg;
+            tf2::Transform T_odom_source;
+            tf2::fromMsg(msg->pose.pose, T_odom_source);
+            if (!msg->twist.twist.linear.x &&
+                !msg->twist.twist.linear.y &&
+                !msg->twist.twist.linear.z &&
+                !msg->twist.twist.angular.x &&
+                !msg->twist.twist.angular.y &&
+                !msg->twist.twist.angular.z)
+            {
+                computeTwistFromPoseDifference(msg, T_odom_source, msg_.twist.twist);
+            }
             target_odom_pub_.publish(msg_);
             return;
         }
