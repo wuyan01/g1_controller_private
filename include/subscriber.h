@@ -3,6 +3,7 @@
 #include <ros/ros.h>
 #include <nav_msgs/Odometry.h>
 #include <tf2_ros/transform_broadcaster.h>
+#include <tf2_ros/static_transform_broadcaster.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
@@ -49,6 +50,7 @@ public:
     {
         fastlio_sub_ = nh.subscribe(fastlio_topic, 10, &FastLioState::fastlioCallback, this);
         msg_.pose.pose.orientation.x = 1.0;
+        publishMid360LinkInv();
     }
 
     nav_msgs::Odometry msg_;
@@ -59,53 +61,18 @@ private:
     {
         std::lock_guard<std::mutex> lock(mutex_);
 
-        geometry_msgs::TransformStamped odom_T_camera_init;
-        odom_T_camera_init.header.stamp = msg->header.stamp;
-        odom_T_camera_init.header.frame_id = "odom";
-        odom_T_camera_init.child_frame_id = msg->header.frame_id;
-
-        // identity transform
-        odom_T_camera_init.transform.translation.x = 0.0;
-        odom_T_camera_init.transform.translation.y = 0.0;
-        odom_T_camera_init.transform.translation.z = 0.0;
-        odom_T_camera_init.transform.rotation.x = 0.0;
-        odom_T_camera_init.transform.rotation.y = 0.0;
-        odom_T_camera_init.transform.rotation.z = 0.0;
-        odom_T_camera_init.transform.rotation.w = 1.0;
-
-        br_.sendTransform(odom_T_camera_init);
-
-
-        geometry_msgs::TransformStamped body_T_mid360_link_inv;
-        body_T_mid360_link_inv.header.stamp = msg->header.stamp;
-        body_T_mid360_link_inv.header.frame_id = "body";
-        body_T_mid360_link_inv.child_frame_id = "mid360_link_inv";
-
-        // identity transform
-        body_T_mid360_link_inv.transform.translation.x = 0.0;
-        body_T_mid360_link_inv.transform.translation.y = 0.0;
-        body_T_mid360_link_inv.transform.translation.z = 0.0;
-        body_T_mid360_link_inv.transform.rotation.x = 1.0;
-        body_T_mid360_link_inv.transform.rotation.y = 0.0;
-        body_T_mid360_link_inv.transform.rotation.z = 0.0;
-        body_T_mid360_link_inv.transform.rotation.w = 0.0;
-
-        br_.sendTransform(body_T_mid360_link_inv);
-
-
-        const std::string parent_frame = "odom";
+        const std::string parent_frame = "torso_link";
         const std::string child_frame  = "mid360_link_inv";
-        ros::Time t = ros::Time(0);
-        geometry_msgs::TransformStamped odom_T_mid360_link_inv;
+        geometry_msgs::TransformStamped torso_link_T_mid360_link_inv;
         try
         {
-            if (!tf_buffer_.canTransform(parent_frame, child_frame, t, ros::Duration(0.1)))
+            if (!tf_buffer_.canTransform(parent_frame, child_frame, msg->header.stamp, ros::Duration(0.1)))
             {
                 ROS_WARN_THROTTLE(1.0, "Waiting for TF %s -> %s", parent_frame.c_str(), child_frame.c_str());
                 return;
             }
 
-            odom_T_mid360_link_inv = tf_buffer_.lookupTransform(parent_frame, child_frame, t);
+            torso_link_T_mid360_link_inv = tf_buffer_.lookupTransform(parent_frame, child_frame, msg->header.stamp);
         }
         catch (const tf2::TransformException& ex)
         {
@@ -113,10 +80,37 @@ private:
                               parent_frame.c_str(), child_frame.c_str(), ex.what());
             return;
         }
-        tf2::Transform T_odom_mid360_link_inv;
-        tf2::fromMsg(odom_T_mid360_link_inv.transform, T_odom_mid360_link_inv);
-        msg_.pose.pose = transformToPoseMsg(T_odom_mid360_link_inv);
+        tf2::Transform T_torso_link_mid360_link_inv;
+        tf2::fromMsg(torso_link_T_mid360_link_inv.transform, T_torso_link_mid360_link_inv);
 
+        tf2::Transform T_camera_init_body;
+        tf2::fromMsg(msg->pose.pose, T_camera_init_body);
+        tf2::Transform T_torso_link_body = T_torso_link_mid360_link_inv * T_camera_init_body;
+
+        msg_.pose.pose = transformToPoseMsg(T_torso_link_body);
+
+        torso_link_T_mid360_link_inv.header.stamp = msg->header.stamp;
+        torso_link_T_mid360_link_inv.header.frame_id = "odom";
+        torso_link_T_mid360_link_inv.child_frame_id = "camera_init";
+        br_.sendTransform(torso_link_T_mid360_link_inv);
+    }
+
+    void publishMid360LinkInv()
+    {
+        geometry_msgs::TransformStamped mid360_link_T_mid360_link_inv;
+        mid360_link_T_mid360_link_inv.header.stamp = ros::Time::now();
+        mid360_link_T_mid360_link_inv.header.frame_id = "mid360_link";
+        mid360_link_T_mid360_link_inv.child_frame_id = "mid360_link_inv";
+
+        mid360_link_T_mid360_link_inv.transform.translation.x = 0.0;
+        mid360_link_T_mid360_link_inv.transform.translation.y = 0.0;
+        mid360_link_T_mid360_link_inv.transform.translation.z = 0.0;
+        mid360_link_T_mid360_link_inv.transform.rotation.x = 1.0;
+        mid360_link_T_mid360_link_inv.transform.rotation.y = 0.0;
+        mid360_link_T_mid360_link_inv.transform.rotation.z = 0.0;
+        mid360_link_T_mid360_link_inv.transform.rotation.w = 0.0;
+
+        static_br_.sendTransform(mid360_link_T_mid360_link_inv);
     }
 
     inline geometry_msgs::Pose transformToPoseMsg(const tf2::Transform& T)
@@ -131,6 +125,7 @@ private:
 
     ros::Subscriber fastlio_sub_;
     tf2_ros::TransformBroadcaster br_;
+    tf2_ros::StaticTransformBroadcaster static_br_;
     tf2_ros::Buffer tf_buffer_;
     tf2_ros::TransformListener tf_listener_;
 };

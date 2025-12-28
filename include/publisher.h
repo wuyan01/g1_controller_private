@@ -329,12 +329,15 @@ private:
         // ----------------------------
         // Publish TF: odom -> target
         // ----------------------------
-        geometry_msgs::TransformStamped tf;
-        tf.header = msg_.header;
-        tf.child_frame_id = output_odom_frame_;
-        tf.transform = tf2::toMsg(T_odom_target);
+        if (output_odom_frame_ == "pelvis")
+        {
+            geometry_msgs::TransformStamped tf;
+            tf.header = msg_.header;
+            tf.child_frame_id = output_odom_frame_;
+            tf.transform = tf2::toMsg(T_odom_target);
 
-        br_.sendTransform(tf);
+            br_.sendTransform(tf);
+        }
     }
 
     inline Eigen::Matrix3d quatToEigen(const tf2::Quaternion& q)
