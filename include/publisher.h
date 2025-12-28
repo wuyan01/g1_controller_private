@@ -204,13 +204,13 @@ class OdometryFusion
 public:
     using SharedPtr = std::shared_ptr<OdometryFusion>;
 
-    OdometryFusion() : tf_listener_(tf_buffer_) {}
+    OdometryFusion() : tf_listener_(tf_buffer_), last_tf_stamp_(0) {}
     
     OdometryFusion(ros::NodeHandle& nh,
                          const std::string& input_odom_topic  = "pose_source/odom",
                          const std::string& output_odom_frame = "pelvis",
                          uint32_t queue_size = 10)
-        : tf_listener_(tf_buffer_), output_odom_frame_(output_odom_frame)
+        : tf_listener_(tf_buffer_), output_odom_frame_(output_odom_frame), last_tf_stamp_(0)
     {
         odom_sub_ = nh.subscribe(input_odom_topic,
                                  queue_size,
@@ -236,6 +236,7 @@ private:
 
     bool last_valid_;
     ros::Time last_stamp_;
+    ros::Time last_tf_stamp_;
     tf2::Transform last_T_odom_target_;
 
     void odomCallback(const nav_msgs::OdometryConstPtr& msg)
@@ -329,7 +330,7 @@ private:
         // ----------------------------
         // Publish TF: odom -> target
         // ----------------------------
-        if (output_odom_frame_ == "pelvis")
+        if (output_odom_frame_ == "pelvis" && msg_.header.stamp > last_tf_stamp_)
         {
             geometry_msgs::TransformStamped tf;
             tf.header = msg_.header;
@@ -338,6 +339,7 @@ private:
 
             br_.sendTransform(tf);
         }
+        last_tf_stamp_ = msg_.header.stamp;
     }
 
     inline Eigen::Matrix3d quatToEigen(const tf2::Quaternion& q)
