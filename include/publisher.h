@@ -365,70 +365,67 @@ private:
         const tf2::Transform& T_odom_target,
         geometry_msgs::Twist& twist_out)
     {
-        if (last_valid_)
+        if (!last_valid_)
         {
-            const double dt = (msg->header.stamp - last_stamp_).toSec();
+            last_T_odom_target_ = T_odom_target;
+            last_stamp_ = msg->header.stamp;
+            last_valid_ = true;
 
-            if (dt <= 0.0) {
-                twist_out = geometry_msgs::Twist();
-                return; // don't update on out-of-order
-            }
-            if (dt <= 1e-4) {
-                twist_out = geometry_msgs::Twist();
-                last_T_odom_target_ = T_odom_target;
-                last_stamp_ = msg->header.stamp;
-                return;
-            }
-            if (dt > 1e-4) {
-                // Linear velocity in odom frame
-                tf2::Vector3 p_now  = T_odom_target.getOrigin();
-                tf2::Vector3 p_prev = last_T_odom_target_.getOrigin();
-                tf2::Vector3 v_odom = (p_now - p_prev) / dt;
-
-                // Angular velocity in odom frame
-                tf2::Quaternion q_now  = T_odom_target.getRotation();
-                tf2::Quaternion q_prev = last_T_odom_target_.getRotation();
-
-                tf2::Quaternion q_rel = q_prev.inverse() * q_now;
-                q_rel.normalize();
-
-                double angle = q_rel.getAngle();
-                tf2::Vector3 w_odom(0.0, 0.0 ,0.0);
-                if (angle > 1e-9)
-                {
-                    if (angle > M_PI) angle -= 2*M_PI;
-                    tf2::Vector3 axis = q_rel.getAxis();
-                    w_odom = axis * (angle / dt);
-                }
-
-                // Convert twist from odom frame -> child frame
-                tf2::Matrix3x3 R_odom_target(q_now);
-                tf2::Matrix3x3 R_target_odom = R_odom_target.transpose();
-
-                tf2::Vector3 v_child = R_target_odom * v_odom;
-                tf2::Vector3 w_child = R_target_odom * w_odom;
-
-                twist_out.linear.x = v_child.x();
-                twist_out.linear.y = v_child.y();
-                twist_out.linear.z = v_child.z();
-
-                twist_out.angular.x = w_child.x();
-                twist_out.angular.y = w_child.y();
-                twist_out.angular.z = w_child.z();
-
-                // Update last state
-                last_T_odom_target_ = T_odom_target;
-                last_stamp_ = msg->header.stamp;
-                last_valid_ = true;
-            }
-            else
-            {
-                twist_out = geometry_msgs::Twist();
-            }
-        }
-        else
-        {
             twist_out = geometry_msgs::Twist();
+            return;
+        }
+
+        const double dt = (msg->header.stamp - last_stamp_).toSec();
+        if (dt <= 0.0) {
+            twist_out = geometry_msgs::Twist();
+            return; // don't update on out-of-order
+        }
+        if (dt <= 1e-4) {
+            twist_out = geometry_msgs::Twist();
+            last_T_odom_target_ = T_odom_target;
+            last_stamp_ = msg->header.stamp;
+            return;
+        }
+        if (dt > 1e-4) {
+            // Linear velocity in odom frame
+            tf2::Vector3 p_now  = T_odom_target.getOrigin();
+            tf2::Vector3 p_prev = last_T_odom_target_.getOrigin();
+            tf2::Vector3 v_odom = (p_now - p_prev) / dt;
+
+            // Angular velocity in odom frame
+            tf2::Quaternion q_now  = T_odom_target.getRotation();
+            tf2::Quaternion q_prev = last_T_odom_target_.getRotation();
+
+            tf2::Quaternion q_rel = q_prev.inverse() * q_now;
+            q_rel.normalize();
+
+            double angle = q_rel.getAngle();
+            tf2::Vector3 w_odom(0.0, 0.0 ,0.0);
+            if (angle > 1e-9)
+            {
+                if (angle > M_PI) angle -= 2*M_PI;
+                tf2::Vector3 axis = q_rel.getAxis();
+                w_odom = axis * (angle / dt);
+            }
+
+            // Convert twist from odom frame -> child frame
+            tf2::Matrix3x3 R_odom_target(q_now);
+            tf2::Matrix3x3 R_target_odom = R_odom_target.transpose();
+
+            tf2::Vector3 v_child = R_target_odom * v_odom;
+            tf2::Vector3 w_child = R_target_odom * w_odom;
+
+            twist_out.linear.x = v_child.x();
+            twist_out.linear.y = v_child.y();
+            twist_out.linear.z = v_child.z();
+
+            twist_out.angular.x = w_child.x();
+            twist_out.angular.y = w_child.y();
+            twist_out.angular.z = w_child.z();
+
+            // Update last state
+            last_T_odom_target_ = T_odom_target;
+            last_stamp_ = msg->header.stamp;
         }
     }
 

@@ -87,6 +87,7 @@ private:
         tf2::fromMsg(msg->pose.pose, T_camera_init_body);
         tf2::Transform T_torso_link_body = T_torso_link_mid360_link_inv * T_camera_init_body;
 
+        msg_.header.stamp = msg->header.stamp;
         msg_.pose.pose = transformToPoseMsg(T_torso_link_body);
 
         torso_link_T_mid360_link_inv.header.stamp = msg->header.stamp;

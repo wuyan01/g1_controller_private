@@ -10,7 +10,7 @@ class FSMState : public BaseState
 {
 public:
     FSMState(int state, std::string state_string) 
-    : BaseState(state, state_string) 
+    : BaseState(state, state_string), last_motioncapture_stamp_(0), last_lidar_stamp_(0)
     {
         spdlog::info("Initializing State_{} ...", state_string);
 
@@ -88,6 +88,8 @@ public:
 private:
 
     std::vector<std::string> joint_names;
+    ros::Time last_motioncapture_stamp_;
+    ros::Time last_lidar_stamp_;
 
     void republish_lowstate_ros1()
     {
@@ -261,21 +263,27 @@ private:
         sportmodeodom->msg_.twist.twist.angular.z =
             lowstate->msg_.imu_state().gyroscope()[2];
         
-        motioncaptureodom->msg_.header.stamp = ros::Time::now();
-        motioncaptureodom->msg_.header.frame_id = "odom";
-        motioncaptureodom->msg_.child_frame_id = "torso_link";
-        motioncaptureodom->msg_.pose = motioncapturestate->msg_.pose;
-        motioncaptureodom->msg_.twist = motioncapturestate->msg_.twist;
-
-        lidarodom->msg_.header.stamp = ros::Time::now();
-        lidarodom->msg_.header.frame_id = "odom";
-        lidarodom->msg_.child_frame_id = "mid360_link_inv";
-        lidarodom->msg_.pose = fastliostate->msg_.pose;
-        lidarodom->msg_.twist = fastliostate->msg_.twist;
-
         sportmodeodom->publish();
-        motioncaptureodom->publish();
-        lidarodom->publish();
+
+        if (motioncapturestate->msg_.header.stamp != last_motioncapture_stamp_) {
+            motioncaptureodom->msg_.header.stamp = motioncapturestate->msg_.header.stamp;
+            motioncaptureodom->msg_.header.frame_id = "odom";
+            motioncaptureodom->msg_.child_frame_id = "torso_link";
+            motioncaptureodom->msg_.pose = motioncapturestate->msg_.pose;
+            motioncaptureodom->msg_.twist = motioncapturestate->msg_.twist;
+            motioncaptureodom->publish();
+        }
+        last_motioncapture_stamp_ = motioncapturestate->msg_.header.stamp;
+
+        if (fastliostate->msg_.header.stamp != last_lidar_stamp_) {
+            lidarodom->msg_.header.stamp = fastliostate->msg_.header.stamp;
+            lidarodom->msg_.header.frame_id = "odom";
+            lidarodom->msg_.child_frame_id = "mid360_link_inv";
+            lidarodom->msg_.pose = fastliostate->msg_.pose;
+            lidarodom->msg_.twist = fastliostate->msg_.twist;
+            lidarodom->publish();
+        }
+        last_lidar_stamp_ = fastliostate->msg_.header.stamp;
     }
 
     void republish_lowcmd_ros1()

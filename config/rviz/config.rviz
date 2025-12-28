@@ -286,7 +286,8 @@ Visualization Manager:
       Marker Topic: /g1_controller/velocity_markers
       Name: MarkerArray
       Namespaces:
-        {}
+        cmd_vel: true
+        real_vel: true
       Queue Size: 100
       Value: true
     - Class: rviz/Group
@@ -411,7 +412,7 @@ Visualization Manager:
             Shaft Length: 0.05000000074505806
             Shaft Radius: 0.05000000074505806
             Value: Axes
-          Topic: /Odometry_loc
+          Topic: /g1_controller/torso_link_odom
           Unreliable: false
           Value: true
       Enabled: true
@@ -444,7 +445,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 6.614856243133545
+      Distance: 6.986024379730225
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -452,17 +453,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -0.43544429540634155
-        Y: 1.249711513519287
-        Z: -2.0078513622283936
+        X: 0.29129377007484436
+        Y: 0.9109957218170166
+        Z: -1.7980891466140747
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6747962832450867
+      Pitch: 0.8597961068153381
       Target Frame: global
-      Yaw: 5.3021979331970215
+      Yaw: 4.057193279266357
     Saved: ~
 Window Geometry:
   Displays:
