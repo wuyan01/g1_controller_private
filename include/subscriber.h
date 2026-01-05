@@ -50,7 +50,6 @@ public:
     {
         fastlio_sub_ = nh.subscribe(fastlio_topic, 10, &FastLioState::fastlioCallback, this);
         msg_.pose.pose.orientation.x = 1.0;
-        publishMid360LinkInv();
     }
 
     nav_msgs::Odometry msg_;
@@ -94,24 +93,6 @@ private:
         torso_link_T_mid360_link_inv.header.frame_id = "odom";
         torso_link_T_mid360_link_inv.child_frame_id = "camera_init";
         br_.sendTransform(torso_link_T_mid360_link_inv);
-    }
-
-    void publishMid360LinkInv()
-    {
-        geometry_msgs::TransformStamped mid360_link_T_mid360_link_inv;
-        mid360_link_T_mid360_link_inv.header.stamp = ros::Time::now();
-        mid360_link_T_mid360_link_inv.header.frame_id = "mid360_link";
-        mid360_link_T_mid360_link_inv.child_frame_id = "mid360_link_inv";
-
-        mid360_link_T_mid360_link_inv.transform.translation.x = 0.0;
-        mid360_link_T_mid360_link_inv.transform.translation.y = 0.0;
-        mid360_link_T_mid360_link_inv.transform.translation.z = 0.0;
-        mid360_link_T_mid360_link_inv.transform.rotation.x = 1.0;
-        mid360_link_T_mid360_link_inv.transform.rotation.y = 0.0;
-        mid360_link_T_mid360_link_inv.transform.rotation.z = 0.0;
-        mid360_link_T_mid360_link_inv.transform.rotation.w = 0.0;
-
-        static_br_.sendTransform(mid360_link_T_mid360_link_inv);
     }
 
     inline geometry_msgs::Pose transformToPoseMsg(const tf2::Transform& T)
