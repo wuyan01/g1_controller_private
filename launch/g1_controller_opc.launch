@@ -1,0 +1,17 @@
+<launch>
+    <arg name="network" default="eno1"/>
+    <arg name="pose_source_odom" default="/g1_controller/lidar/odom"/>
+
+    <include file="$(find g1_controller)/launch/g1_controller_sim.launch">
+        <arg name="network" value="$(arg network)"/>
+        <arg name="pose_source_odom" value="$(arg pose_source_odom)"/>
+    </include>
+
+    <include file="$(find livox_ros_driver2)/launch_ROS1/msg_MID360.launch"/>
+
+    <include file="$(find fast_lio)/launch/mapping_mid360_g1.launch"/>
+    
+    <include file="$(find realsense2_camera)/launch/rs_camera.launch">
+        <arg name="enable_pointcloud" value="true"/>
+    </include>
+</launch>
