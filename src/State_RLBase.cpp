@@ -40,9 +40,16 @@ State_RLBase::State_RLBase(int state_mode, std::string state_string)
     std::filesystem::path package_path = ros::package::getPath("g1_controller");
     auto policy_dir = package_path / cfg["policy_dir"].as<std::string>();
 
+    auto deploy_cfg = YAML::LoadFile(policy_dir / "params" / "deploy.yaml");
+    if (deploy_cfg["height_map"]["measure_terrain_heights"].as<bool>())
+    {
+        State_RLBase::heightmaphandler->init(deploy_cfg["height_map"]);
+        State_RLBase::heightmaphandler->start();
+    }
+
     env = std::make_unique<isaaclab::ManagerBasedRLEnv>(
-        YAML::LoadFile(policy_dir / "params" / "deploy.yaml"),
-        std::make_shared<unitree::G1Articulation<LowState_t::SharedPtr, OdometryFusion_t::SharedPtr>>(FSMState::lowstate, FSMState::torsoodometryfusion)
+        deploy_cfg,
+        std::make_shared<unitree::G1Articulation<LowState_t::SharedPtr, OdometryFusion_t::SharedPtr, HeightMapHandler_t::SharedPtr>>(FSMState::lowstate, State_RLBase::torsoodometryfusion, State_RLBase::heightmaphandler)
     );
     env->alg = std::make_unique<isaaclab::OrtRunner>(policy_dir / "exported" / "policy.onnx");
 

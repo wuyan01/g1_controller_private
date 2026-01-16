@@ -63,6 +63,8 @@ public:
     }
 
     static std::shared_ptr<VelocityMarkers_t> velocitymarkers;
+    static std::shared_ptr<OdometryFusion_t> torsoodometryfusion;
+    static std::shared_ptr<HeightMapHandler_t> heightmaphandler;
 
 private:
     std::unique_ptr<isaaclab::ManagerBasedRLEnv> env;

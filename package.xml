@@ -22,6 +22,11 @@
   <depend>sensor_msgs</depend>
   <depend>visualization_msgs</depend>
   <depend>tf2_ros</depend>
+  <depend>tf</depend>
+  <depend>tf_conversions</depend>
+  <depend>grid_map_core</depend>
+  <depend>grid_map_ros</depend>
+  <depend>grid_map_msgs</depend>
 
   <!-- System libraries your CMakeLists finds/resolves -->
   <build_depend>boost</build_depend>

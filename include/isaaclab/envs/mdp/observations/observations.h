@@ -143,5 +143,12 @@ REGISTER_OBSERVATION(gait_phase)
     return obs;
 }
 
+REGISTER_OBSERVATION(height_map)
+{
+    auto & asset = env->robot;
+    auto & data = asset->data.height_map;
+    return std::vector<float>(data.data(), data.data() + data.size());
+}
+
 }
 }

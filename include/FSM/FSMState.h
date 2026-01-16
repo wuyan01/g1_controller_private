@@ -82,7 +82,6 @@ public:
     static std::shared_ptr<PoseSourceOdom_t> motioncaptureodom;
     static std::shared_ptr<PoseSourceOdom_t> lidarodom;
     static std::shared_ptr<OdometryFusion_t> pelvisodometryfusion;
-    static std::shared_ptr<OdometryFusion_t> torsoodometryfusion;
     static std::string network_interface;
 
 private:

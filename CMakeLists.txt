@@ -20,6 +20,11 @@ find_package(catkin REQUIRED COMPONENTS
   visualization_msgs
   tf2_ros
   message_generation
+  tf
+  tf_conversions
+  grid_map_core
+  grid_map_ros
+  grid_map_msgs
 )
 
 # ============================================================
@@ -98,7 +103,8 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES g1_controller_lib
-  CATKIN_DEPENDS roscpp std_msgs roslib geometry_msgs nav_msgs sensor_msgs visualization_msgs tf2_ros message_runtime
+  CATKIN_DEPENDS roscpp std_msgs roslib geometry_msgs nav_msgs sensor_msgs visualization_msgs tf2_ros message_runtime tf tf_conversions grid_map_core grid_map_ros grid_map_msgs
+
 )
 
 # ============================================================

@@ -468,6 +468,14 @@ Visualization Manager:
           Use Fixed Frame: true
           Use rainbow: true
           Value: false
+        - Class: rviz/Marker
+          Enabled: true
+          Marker Topic: /elevation_mapping/foot_scan
+          Name: Marker
+          Namespaces:
+            rl_controller: true
+          Queue Size: 100
+          Value: true
       Enabled: true
       Name: Elevation Map
   Enabled: true
@@ -498,7 +506,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 6.2960357666015625
+      Distance: 5.7556562423706055
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -514,9 +522,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6197962760925293
+      Pitch: 0.7797961235046387
       Target Frame: global
-      Yaw: 3.9771921634674072
+      Yaw: 5.332202434539795
     Saved: ~
 Window Geometry:
   Displays:

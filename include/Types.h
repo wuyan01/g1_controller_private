@@ -4,6 +4,7 @@
 #include "unitree/dds_wrapper/robots/g1/g1.h"
 #include "subscriber.h"
 #include "publisher.h"
+#include "service_client.h"
 
 using LowCmd_t = unitree::robot::g1::publisher::LowCmd;
 using LowState_t = unitree::robot::g1::subscription::LowState;
@@ -16,3 +17,4 @@ using JointState_t = JointState;
 using VelocityMarkers_t = VelocityMarkers;
 using PoseSourceOdom_t = PoseSourceOdom;
 using OdometryFusion_t = OdometryFusion;
+using HeightMapHandler_t = HeightMapHandler;

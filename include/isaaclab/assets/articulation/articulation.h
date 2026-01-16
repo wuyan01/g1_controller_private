@@ -39,6 +39,8 @@ struct ArticulationData
 
     Eigen::Quaternionf root_quat_w;
 
+    Eigen::VectorXf height_map;
+
     std::vector<int> joint_ids_map;
 
     unitree::common::UnitreeJoystick* joystick = nullptr;
