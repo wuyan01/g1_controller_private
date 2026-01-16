@@ -1,5 +1,7 @@
 #pragma once
 
+#include "unitree/dds_wrapper/common/Subscription.h"
+#include <unitree/idl/go2/HeightMap_.hpp>
 #include <ros/ros.h>
 #include <nav_msgs/Odometry.h>
 #include <tf2_ros/transform_broadcaster.h>
@@ -9,6 +11,16 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <mutex>
+
+
+class HeightMap : public unitree::robot::SubscriptionBase<unitree_go::msg::dds_::HeightMap_>
+{
+public:
+    using SharedPtr = std::shared_ptr<HeightMap>;
+
+    HeightMap(std::string topic = "rt/heightmap") : unitree::robot::SubscriptionBase<MsgType>(topic) {}
+
+};
 
 
 class MotionCaptureState

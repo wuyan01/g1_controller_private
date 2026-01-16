@@ -10,6 +10,7 @@ std::unique_ptr<LowCmd_t> FSMState::lowcmd = nullptr;
 std::shared_ptr<LowState_t> FSMState::lowstate = nullptr;
 std::shared_ptr<Keyboard> FSMState::keyboard = std::make_shared<Keyboard>();
 std::shared_ptr<SportModeState_t> FSMState::sportmodestate = nullptr;
+std::shared_ptr<HeightMap_t> FSMState::heightmap = nullptr;
 std::shared_ptr<MotionCaptureState_t> FSMState::motioncapturestate = nullptr;
 std::shared_ptr<FastLioState_t> FSMState::fastliostate = nullptr;
 std::shared_ptr<LowCmdROS1_t> FSMState::lowcmd_ros1 = nullptr;
@@ -38,6 +39,7 @@ void init_fsm_state(ros::NodeHandle& nh)
     FSMState::lowcmd = std::make_unique<LowCmd_t>();
     FSMState::lowstate = std::make_shared<LowState_t>();
     FSMState::sportmodestate = std::make_shared<SportModeState_t>();
+    FSMState::heightmap = std::make_shared<HeightMap_t>();
     FSMState::motioncapturestate = std::make_shared<MotionCaptureState_t>(nh, "/qualisys/base/odom");
     FSMState::fastliostate = std::make_shared<FastLioState_t>(nh, "/Odometry_loc");
     FSMState::lowcmd_ros1 = std::make_shared<LowCmdROS1_t>(nh, "lowcmd");

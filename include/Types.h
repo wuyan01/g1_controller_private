@@ -9,6 +9,7 @@
 using LowCmd_t = unitree::robot::g1::publisher::LowCmd;
 using LowState_t = unitree::robot::g1::subscription::LowState;
 using SportModeState_t = unitree::robot::go2::subscription::SportModeState;
+using HeightMap_t = HeightMap;
 using MotionCaptureState_t = MotionCaptureState;
 using FastLioState_t = FastLioState;
 using LowCmdROS1_t = LowCmdROS1;

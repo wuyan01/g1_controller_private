@@ -74,6 +74,7 @@ public:
     static std::shared_ptr<LowState_t> lowstate;
     static std::shared_ptr<Keyboard> keyboard;
     static std::shared_ptr<SportModeState_t> sportmodestate;
+    static std::shared_ptr<HeightMap_t> heightmap;
     static std::shared_ptr<MotionCaptureState_t> motioncapturestate;
     static std::shared_ptr<FastLioState_t> fastliostate;
     static std::shared_ptr<LowCmdROS1_t> lowcmd_ros1;
@@ -227,7 +228,7 @@ private:
         imu->msg_.linear_acceleration.x = lowstate->msg_.imu_state().accelerometer()[0];
         imu->msg_.linear_acceleration.y = lowstate->msg_.imu_state().accelerometer()[1];
         imu->msg_.linear_acceleration.z = lowstate->msg_.imu_state().accelerometer()[2];
-        
+
         imu->publish();
     }
 
