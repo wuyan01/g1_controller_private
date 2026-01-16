@@ -60,6 +60,7 @@ public:
         if(keyboard) keyboard->update();
         republish_lowstate_ros1();
         republish_jointstate();
+        republish_imu();
         republish_posesourceodom();
     }
 
@@ -78,6 +79,7 @@ public:
     static std::shared_ptr<LowCmdROS1_t> lowcmd_ros1;
     static std::shared_ptr<LowStateROS1_t> lowstate_ros1;
     static std::shared_ptr<JointState_t> jointstate;
+    static std::shared_ptr<Imu_t> imu;
     static std::shared_ptr<PoseSourceOdom_t> sportmodeodom;
     static std::shared_ptr<PoseSourceOdom_t> motioncaptureodom;
     static std::shared_ptr<PoseSourceOdom_t> lidarodom;
@@ -206,6 +208,27 @@ private:
         }
 
         jointstate->publish();
+    }
+
+    void republish_imu()
+    {
+        imu->msg_.header.stamp = ros::Time::now();
+        imu->msg_.header.frame_id = "pelvis";
+
+        imu->msg_.orientation.x = lowstate->msg_.imu_state().quaternion()[0];
+        imu->msg_.orientation.y = lowstate->msg_.imu_state().quaternion()[1];
+        imu->msg_.orientation.z = lowstate->msg_.imu_state().quaternion()[2];
+        imu->msg_.orientation.w = lowstate->msg_.imu_state().quaternion()[3];
+
+        imu->msg_.angular_velocity.x = lowstate->msg_.imu_state().gyroscope()[0];
+        imu->msg_.angular_velocity.y = lowstate->msg_.imu_state().gyroscope()[1];
+        imu->msg_.angular_velocity.z = lowstate->msg_.imu_state().gyroscope()[2];
+
+        imu->msg_.linear_acceleration.x = lowstate->msg_.imu_state().accelerometer()[0];
+        imu->msg_.linear_acceleration.y = lowstate->msg_.imu_state().accelerometer()[1];
+        imu->msg_.linear_acceleration.z = lowstate->msg_.imu_state().accelerometer()[2];
+        
+        imu->publish();
     }
 
     void republish_posesourceodom()

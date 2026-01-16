@@ -15,6 +15,7 @@ std::shared_ptr<FastLioState_t> FSMState::fastliostate = nullptr;
 std::shared_ptr<LowCmdROS1_t> FSMState::lowcmd_ros1 = nullptr;
 std::shared_ptr<LowStateROS1_t> FSMState::lowstate_ros1 = nullptr;
 std::shared_ptr<JointState_t> FSMState::jointstate = nullptr;
+std::shared_ptr<Imu_t> FSMState::imu = nullptr;
 std::shared_ptr<VelocityMarkers_t> State_RLBase::velocitymarkers = nullptr;
 std::shared_ptr<PoseSourceOdom_t> FSMState::sportmodeodom = nullptr;
 std::shared_ptr<PoseSourceOdom_t> FSMState::motioncaptureodom = nullptr;
@@ -42,6 +43,7 @@ void init_fsm_state(ros::NodeHandle& nh)
     FSMState::lowcmd_ros1 = std::make_shared<LowCmdROS1_t>(nh, "lowcmd");
     FSMState::lowstate_ros1 = std::make_shared<LowStateROS1_t>(nh, "lowstate");
     FSMState::jointstate = std::make_shared<JointState_t>(nh, "joint_states");
+    FSMState::imu = std::make_shared<Imu_t>(nh, "imu");
     State_RLBase::velocitymarkers = std::make_shared<VelocityMarkers_t>(nh, "velocity_markers");
     FSMState::sportmodeodom = std::make_shared<PoseSourceOdom_t>(nh, "sport_mode/odom");
     FSMState::motioncaptureodom = std::make_shared<PoseSourceOdom_t>(nh, "motion_capture/odom");

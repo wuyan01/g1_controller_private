@@ -2,6 +2,7 @@
 
 #include <ros/ros.h>
 #include <sensor_msgs/JointState.h>
+#include <sensor_msgs/Imu.h>
 #include <nav_msgs/Odometry.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <visualization_msgs/Marker.h>
@@ -93,6 +94,33 @@ public:
 private:
 
     ros::Publisher jointstate_pub_;
+};
+
+
+class Imu
+{
+public:
+    using SharedPtr = std::shared_ptr<Imu>;
+
+    Imu() {}
+
+    Imu(ros::NodeHandle& nh, const std::string& imu_topic = "imu", uint32_t queue_size = 10)
+    {
+        imu_pub_ = nh.advertise<sensor_msgs::Imu>(imu_topic, queue_size);
+    }
+
+    void publish()
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        imu_pub_.publish(msg_);
+    }
+
+    sensor_msgs::Imu msg_;
+    std::mutex mutex_;
+
+private:
+
+    ros::Publisher imu_pub_;
 };
 
 
