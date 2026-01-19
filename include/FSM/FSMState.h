@@ -236,7 +236,7 @@ private:
         sportmodeodom->msg_.header.stamp = ros::Time::now();
 
         sportmodeodom->msg_.header.frame_id = "odom";
-        sportmodeodom->msg_.child_frame_id = "torso_link";
+        sportmodeodom->msg_.child_frame_id = "pelvis";
         // position
         sportmodeodom->msg_.pose.pose.position.x =
             sportmodestate->msg_.position()[0];

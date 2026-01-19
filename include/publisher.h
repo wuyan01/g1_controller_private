@@ -285,6 +285,7 @@ private:
             ROS_WARN_THROTTLE(1.0, "Incoming odometry has empty child_frame_id");
             return;
         }
+        tf2::Transform T_odom_target;
         if (source_link == output_odom_frame_)
         {
             msg_ = *msg;
@@ -300,71 +301,74 @@ private:
                 computeTwistFromPoseDifference(msg, T_odom_source, msg_.twist.twist);
             }
             target_odom_pub_.publish(msg_);
-            return;
-        }
-
-        // Wait for target <- source_link TF
-        if (!tf_buffer_.canTransform(output_odom_frame_,
-                                     source_link,
-                                     msg->header.stamp,
-                                     ros::Duration(0.1)))
-        {
-            ROS_WARN_THROTTLE(1.0,
-                "Waiting for TF %s -> %s",
-                output_odom_frame_.c_str(),
-                source_link.c_str());
-            return;
-        }
-        geometry_msgs::TransformStamped target_T_source;
-        try
-        {
-            target_T_source =
-                tf_buffer_.lookupTransform(output_odom_frame_,
-                                           source_link,
-                                           msg->header.stamp);
-        }
-        catch (const tf2::TransformException& ex)
-        {
-            ROS_WARN_THROTTLE(1.0,
-                "TF lookup failed (%s -> %s): %s",
-                output_odom_frame_.c_str(),
-                source_link.c_str(),
-                ex.what());
-            return;
-        }
-        // Convert odom -> source to tf2
-        tf2::Transform T_odom_source;
-        tf2::fromMsg(msg->pose.pose, T_odom_source);
-
-        tf2::Transform T_target_source;
-        tf2::fromMsg(target_T_source.transform, T_target_source);
-
-        tf2::Transform T_source_target = T_target_source.inverse();
-        tf2::Transform T_odom_target = T_odom_source * T_source_target;
-
-        // ----------------------------
-        // Publish target odometry
-        // ----------------------------
-        msg_.header.stamp = msg->header.stamp;
-        msg_.header.frame_id = "odom";
-        msg_.child_frame_id  = output_odom_frame_;
-
-        msg_.pose.pose = transformToPoseMsg(T_odom_target);
-
-        if (!msg->twist.twist.linear.x &&
-            !msg->twist.twist.linear.y &&
-            !msg->twist.twist.linear.z &&
-            !msg->twist.twist.angular.x &&
-            !msg->twist.twist.angular.y &&
-            !msg->twist.twist.angular.z)
-        {
-            computeTwistFromPoseDifference(msg, T_odom_target, msg_.twist.twist);
+            T_odom_target = T_odom_source;
         }
         else
         {
-            transformTwistChildToChild(msg, T_odom_source, T_odom_target, msg_.twist.twist);
+
+            // Wait for target <- source_link TF
+            if (!tf_buffer_.canTransform(output_odom_frame_,
+                                        source_link,
+                                        msg->header.stamp,
+                                        ros::Duration(0.1)))
+            {
+                ROS_WARN_THROTTLE(1.0,
+                    "Waiting for TF %s -> %s",
+                    output_odom_frame_.c_str(),
+                    source_link.c_str());
+                return;
+            }
+            geometry_msgs::TransformStamped target_T_source;
+            try
+            {
+                target_T_source =
+                    tf_buffer_.lookupTransform(output_odom_frame_,
+                                            source_link,
+                                            msg->header.stamp);
+            }
+            catch (const tf2::TransformException& ex)
+            {
+                ROS_WARN_THROTTLE(1.0,
+                    "TF lookup failed (%s -> %s): %s",
+                    output_odom_frame_.c_str(),
+                    source_link.c_str(),
+                    ex.what());
+                return;
+            }
+            // Convert odom -> source to tf2
+            tf2::Transform T_odom_source;
+            tf2::fromMsg(msg->pose.pose, T_odom_source);
+
+            tf2::Transform T_target_source;
+            tf2::fromMsg(target_T_source.transform, T_target_source);
+
+            tf2::Transform T_source_target = T_target_source.inverse();
+            T_odom_target = T_odom_source * T_source_target;
+
+            // ----------------------------
+            // Publish target odometry
+            // ----------------------------
+            msg_.header.stamp = msg->header.stamp;
+            msg_.header.frame_id = "odom";
+            msg_.child_frame_id  = output_odom_frame_;
+
+            msg_.pose.pose = transformToPoseMsg(T_odom_target);
+
+            if (!msg->twist.twist.linear.x &&
+                !msg->twist.twist.linear.y &&
+                !msg->twist.twist.linear.z &&
+                !msg->twist.twist.angular.x &&
+                !msg->twist.twist.angular.y &&
+                !msg->twist.twist.angular.z)
+            {
+                computeTwistFromPoseDifference(msg, T_odom_target, msg_.twist.twist);
+            }
+            else
+            {
+                transformTwistChildToChild(msg, T_odom_source, T_odom_target, msg_.twist.twist);
+            }
+            target_odom_pub_.publish(msg_);
         }
-        target_odom_pub_.publish(msg_);
 
         // ----------------------------
         // Publish TF: odom -> target
