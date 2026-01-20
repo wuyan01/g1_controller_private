@@ -1,8 +1,10 @@
 <launch>
+    <arg name="simulation" default="false"/>
     <arg name="network" default="eno1"/>
     <arg name="pose_source_odom" default="/g1_controller/lidar/odom"/>
 
     <include file="$(find g1_controller)/launch/g1_controller_sim.launch">
+        <arg name="simulation" value="$(arg simulation)"/>
         <arg name="network" value="$(arg network)"/>
         <arg name="pose_source_odom" value="$(arg pose_source_odom)"/>
     </include>

@@ -33,6 +33,8 @@ public:
         gridMapSrv_.request.position_y = 0.0;
         // base height.
         baseHeight_ = 0.0;
+
+        isSimulation_ = nh.param<bool>("simulation", false);
     }
 
     ~HeightMapHandler()
@@ -126,7 +128,7 @@ public:
             for (int i = 0; i < measurementPoints_.rows(); i++) {
                 Eigen::Vector2d point = R_b_yaw.topLeftCorner(2, 2) * measurementPoints_.row(i).transpose() + basePosition_.head(2);
                 float height;
-                if(true) {
+                if (isSimulation_) {
                     height = simulationHeights_(i);
                 } else {
                     try {
@@ -207,7 +209,9 @@ public:
 
     void mapThreadCallback() {
         while (!terminateMapThread_) {
-            update(basePosition_[0], basePosition_[1], basePosition_[2]);
+            if (!isSimulation_) {
+                update(basePosition_[0], basePosition_[1], basePosition_[2]);
+            }
             updateScanMarker(heightMeasurementsVisualizer_);
             usleep(10000);
         }
@@ -286,5 +290,8 @@ private:
 
     // Random number generator.
     std::mt19937 mt_{std::random_device{}()};
+
+    // Simulation flag.
+    bool isSimulation_;
 
 };
