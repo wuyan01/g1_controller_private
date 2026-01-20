@@ -8,6 +8,7 @@
 #include <grid_map_msgs/GetGridMap.h>
 #include <grid_map_ros/GridMapRosConverter.hpp>
 #include <visualization_msgs/Marker.h>
+#include <unitree/idl/go2/HeightMap_.hpp>
 #include <mutex>
 #include <random>
 
@@ -35,6 +36,7 @@ public:
         baseHeight_ = 0.0;
 
         isSimulation_ = nh.param<bool>("simulation", false);
+        measurementPoints_pub_ = std::make_unique<MeasurementPoints_t>("rt/measurementpoints");
     }
 
     ~HeightMapHandler()
@@ -84,6 +86,15 @@ public:
                     measurementIndices_.push_back(j * Nx + i);
                 }
             }
+        }
+        if (isSimulation_ && measurementPoints_pub_->trylock()) {
+            std::cout << measurementPointsX.back() << std::endl;
+            std::cout << measurementPointsX[-1] << std::endl;
+            measurementPoints_pub_->msg_.resolution() = (measurementPointsX.back() - measurementPointsX.front()) / (Nx - 1);
+            measurementPoints_pub_->msg_.width() = Nx;
+            measurementPoints_pub_->msg_.height() = Ny;
+            measurementPoints_pub_->msg_.origin() = {measurementPointsX.front(), measurementPointsY.front()};
+            measurementPoints_pub_->unlockAndPublish();
         }
     }
 
@@ -294,4 +305,6 @@ private:
     // Simulation flag.
     bool isSimulation_;
 
+    using MeasurementPoints_t = unitree::robot::RealTimePublisher<unitree_go::msg::dds_::HeightMap_>;
+    std::unique_ptr<MeasurementPoints_t> measurementPoints_pub_;
 };
