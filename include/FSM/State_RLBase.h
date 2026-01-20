@@ -60,10 +60,12 @@ public:
     {
         FSMState::pre_run();
         republish_velocitymarkers();
+        simulate_heights();
     }
 
     static std::shared_ptr<VelocityMarkers_t> velocitymarkers;
     static std::shared_ptr<OdometryFusion_t> torsoodometryfusion;
+    static std::shared_ptr<HeightMap_t> heightmap;
     static std::shared_ptr<HeightMapHandler_t> heightmaphandler;
 
 private:
@@ -96,6 +98,13 @@ private:
         velocitymarkers->real_marker_.points[1].z = 0.0;
 
         velocitymarkers->publish();
+    }
+
+    void simulate_heights()
+    {
+        for(int i(0); i<heightmaphandler->numPoints_; i++) {
+            heightmaphandler->simulationHeights_(i) = heightmap->msg_.data()[heightmaphandler->measurementIndices_[i]];
+        }
     }
 };
 

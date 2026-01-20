@@ -56,23 +56,30 @@ public:
 
         const std::vector<float> measurementPointsX = cfg["measurement_points"]["x"].as<std::vector<float>>();
         const std::vector<float> measurementPointsY = cfg["measurement_points"]["y"].as<std::vector<float>>();
-        numPoints_ = measurementPointsX.size() * measurementPointsY.size();
+        int Nx = measurementPointsX.size();
+        int Ny = measurementPointsY.size();
+        numPoints_ = Nx * Ny;
         measurementPoints_ = Eigen::MatrixXd::Zero(numPoints_, 2);
         measurementHeights_ = Eigen::VectorXd::Zero(numPoints_);
+        simulationHeights_ = Eigen::VectorXd::Zero(numPoints_);
         heightMeasurementsVisualizer_ = Eigen::MatrixXd::Zero(numPoints_, 4);
         const std::string scanOrdering = cfg["scan_ordering"].as<std::string>();
         if (scanOrdering == "xy") {
-            for (size_t i = 0; i < measurementPointsX.size(); ++i) {
-                for (size_t j = 0; j < measurementPointsY.size(); ++j) {
-                    measurementPoints_(j * measurementPointsX.size() + i, 0) = measurementPointsX[i];
-                    measurementPoints_(j * measurementPointsX.size() + i, 1) = measurementPointsY[j];
+            for (size_t j = 0; j < Ny; ++j) {
+                for (size_t i = 0; i < Nx; ++i) {
+                    size_t k = j * Nx + i;
+                    measurementPoints_(k, 0) = measurementPointsX[i];
+                    measurementPoints_(k, 1) = measurementPointsY[j];
+                    measurementIndices_.push_back(k);
                 }
             }
         } else {
-            for (size_t i = 0; i < measurementPointsY.size(); ++i) {
-                for (size_t j = 0; j < measurementPointsX.size(); ++j) {
-                    measurementPoints_(i * measurementPointsX.size() + j, 0) = measurementPointsX[j];
-                    measurementPoints_(i * measurementPointsX.size() + j, 1) = measurementPointsY[i];
+            for (size_t i = 0; i < Nx; ++i) {
+                for (size_t j = 0; j < Ny; ++j) {
+                    size_t k = i * Ny + j;
+                    measurementPoints_(k, 0) = measurementPointsX[i];
+                    measurementPoints_(k, 1) = measurementPointsY[j];
+                    measurementIndices_.push_back(j * Nx + i);
                 }
             }
         }
@@ -119,12 +126,16 @@ public:
             for (int i = 0; i < measurementPoints_.rows(); i++) {
                 Eigen::Vector2d point = R_b_yaw.topLeftCorner(2, 2) * measurementPoints_.row(i).transpose() + basePosition_.head(2);
                 float height;
-                try {
-                // height = gridMap_.atPosition(layerName_, {point(0), point(1)});
-                height = getHeight(point(0), point(1));
-                } catch (...) {
-                height = 0.f;
-                ROS_INFO_STREAM("[RLController] gridMap_.atPosition failed !");
+                if(true) {
+                    height = simulationHeights_(i);
+                } else {
+                    try {
+                    // height = gridMap_.atPosition(layerName_, {point(0), point(1)});
+                    height = getHeight(point(0), point(1));
+                    } catch (...) {
+                    height = 0.f;
+                    ROS_INFO_STREAM("[RLController] gridMap_.atPosition failed !");
+                    }
                 }
                 measurementHeights_(i) = std::max(std::min(basePosition_(2) - 0.5 - height, 1.0), -1.0);
                 heightMeasurementsVisualizer_(i, 0) = point(0);
@@ -207,6 +218,8 @@ public:
     Eigen::Vector3d basePosition_;
     bool terminateMapThread_ = true;
     std::unique_ptr<std::thread> mapThread_;
+    std::vector<size_t> measurementIndices_;
+    Eigen::VectorXd simulationHeights_;
 
 private:
 

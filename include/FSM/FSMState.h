@@ -74,7 +74,6 @@ public:
     static std::shared_ptr<LowState_t> lowstate;
     static std::shared_ptr<Keyboard> keyboard;
     static std::shared_ptr<SportModeState_t> sportmodestate;
-    static std::shared_ptr<HeightMap_t> heightmap;
     static std::shared_ptr<MotionCaptureState_t> motioncapturestate;
     static std::shared_ptr<FastLioState_t> fastliostate;
     static std::shared_ptr<LowCmdROS1_t> lowcmd_ros1;

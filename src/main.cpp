@@ -10,7 +10,6 @@ std::unique_ptr<LowCmd_t> FSMState::lowcmd = nullptr;
 std::shared_ptr<LowState_t> FSMState::lowstate = nullptr;
 std::shared_ptr<Keyboard> FSMState::keyboard = std::make_shared<Keyboard>();
 std::shared_ptr<SportModeState_t> FSMState::sportmodestate = nullptr;
-std::shared_ptr<HeightMap_t> FSMState::heightmap = nullptr;
 std::shared_ptr<MotionCaptureState_t> FSMState::motioncapturestate = nullptr;
 std::shared_ptr<FastLioState_t> FSMState::fastliostate = nullptr;
 std::shared_ptr<LowCmdROS1_t> FSMState::lowcmd_ros1 = nullptr;
@@ -23,6 +22,7 @@ std::shared_ptr<PoseSourceOdom_t> FSMState::motioncaptureodom = nullptr;
 std::shared_ptr<PoseSourceOdom_t> FSMState::lidarodom = nullptr;
 std::shared_ptr<OdometryFusion_t> FSMState::pelvisodometryfusion = nullptr;
 std::shared_ptr<OdometryFusion_t> State_RLBase::torsoodometryfusion = nullptr;
+std::shared_ptr<HeightMap_t> State_RLBase::heightmap = nullptr;
 std::shared_ptr<HeightMapHandler_t> State_RLBase::heightmaphandler = nullptr;
 std::string FSMState::network_interface = "lo";
 
@@ -39,7 +39,6 @@ void init_fsm_state(ros::NodeHandle& nh)
     FSMState::lowcmd = std::make_unique<LowCmd_t>();
     FSMState::lowstate = std::make_shared<LowState_t>();
     FSMState::sportmodestate = std::make_shared<SportModeState_t>();
-    FSMState::heightmap = std::make_shared<HeightMap_t>();
     FSMState::motioncapturestate = std::make_shared<MotionCaptureState_t>(nh, "/qualisys/base/odom");
     FSMState::fastliostate = std::make_shared<FastLioState_t>(nh, "/Odometry_loc");
     FSMState::lowcmd_ros1 = std::make_shared<LowCmdROS1_t>(nh, "lowcmd");
@@ -52,6 +51,7 @@ void init_fsm_state(ros::NodeHandle& nh)
     FSMState::lidarodom = std::make_shared<PoseSourceOdom_t>(nh, "lidar/odom");
     FSMState::pelvisodometryfusion = std::make_shared<OdometryFusion_t>(nh, "pose_source/odom", "pelvis");
     State_RLBase::torsoodometryfusion = std::make_shared<OdometryFusion_t>(nh, "pose_source/odom", "torso_link");
+    State_RLBase::heightmap = std::make_shared<HeightMap_t>();
     State_RLBase::heightmaphandler = std::make_shared<HeightMapHandler_t>(nh);
     spdlog::info("Waiting for connection to robot...");
     FSMState::lowstate->wait_for_connection();

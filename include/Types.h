@@ -9,7 +9,6 @@
 using LowCmd_t = unitree::robot::g1::publisher::LowCmd;
 using LowState_t = unitree::robot::g1::subscription::LowState;
 using SportModeState_t = unitree::robot::go2::subscription::SportModeState;
-using HeightMap_t = HeightMap;
 using MotionCaptureState_t = MotionCaptureState;
 using FastLioState_t = FastLioState;
 using LowCmdROS1_t = LowCmdROS1;
@@ -19,4 +18,5 @@ using Imu_t = Imu;
 using VelocityMarkers_t = VelocityMarkers;
 using PoseSourceOdom_t = PoseSourceOdom;
 using OdometryFusion_t = OdometryFusion;
+using HeightMap_t = HeightMap;
 using HeightMapHandler_t = HeightMapHandler;
