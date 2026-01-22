@@ -41,10 +41,9 @@ State_RLBase::State_RLBase(int state_mode, std::string state_string)
     auto policy_dir = package_path / cfg["policy_dir"].as<std::string>();
 
     auto deploy_cfg = YAML::LoadFile(policy_dir / "params" / "deploy.yaml");
-    if (deploy_cfg["height_map"]["measure_terrain_heights"].as<bool>())
-    {
-        State_RLBase::heightmaphandler->init(deploy_cfg["height_map"]);
-        State_RLBase::heightmaphandler->start();
+    measure_terrain_heights = deploy_cfg["height_map"]["measure_terrain_heights"].as<bool>();
+    if (measure_terrain_heights) {
+        heightmaphandler->init(deploy_cfg["height_map"]);
     }
 
     env = std::make_unique<isaaclab::ManagerBasedRLEnv>(

@@ -88,8 +88,6 @@ public:
             }
         }
         if (isSimulation_ && measurementPoints_pub_->trylock()) {
-            std::cout << measurementPointsX.back() << std::endl;
-            std::cout << measurementPointsX[-1] << std::endl;
             measurementPoints_pub_->msg_.resolution() = (measurementPointsX.back() - measurementPointsX.front()) / (Nx - 1);
             measurementPoints_pub_->msg_.width() = Nx;
             measurementPoints_pub_->msg_.height() = Ny;
@@ -166,12 +164,12 @@ public:
             h = gridMap_.atPosition(layerName_, {x, y});
             if (!mapInitialized_) {
             // std::normal_distribution<double> normDist(0., 1.);
-            h = baseHeight_ - 0.5;  //+ normDist(mt_) * 0.10;
+            h = baseHeight_ - 0.76;  //+ normDist(mt_) * 0.10;
             ROS_WARN_THROTTLE(1.0, "map is not initialized. filling random values");
             }
         } catch (...) {
             // std::normal_distribution<double> normDist(0., 1.);
-            h = baseHeight_ - 0.5;  // + normDist(mt_) * 0.10;
+            h = baseHeight_ - 0.76;  // + normDist(mt_) * 0.10;
             ROS_WARN_THROTTLE(0.2, "Got error at getting heigt from map. filling random values");
         }
         return h;

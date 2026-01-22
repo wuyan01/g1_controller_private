@@ -44,6 +44,9 @@ public:
                 sleepTill += dt;
             }
         });
+        if (measure_terrain_heights) {
+            heightmaphandler->start();
+        }
     }
 
     void run();
@@ -73,6 +76,8 @@ private:
 
     std::thread policy_thread;
     bool policy_thread_running = false;
+
+    bool measure_terrain_heights = false;
 
     void republish_velocitymarkers()
     {
