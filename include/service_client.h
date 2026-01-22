@@ -216,6 +216,17 @@ public:
         markerPub_.publish(marker_);
     }
 
+    void updateSimulationHeights(std::vector<float> data) {
+        for (int i = 0; i < numPoints_; i++) {
+            if (isSimulation_) {
+                simulationHeights_(i) = data[measurementIndices_[i]];
+            }
+            else {
+                simulationHeights_(i) = 0.0;
+            }
+        }
+    }
+
     void mapThreadCallback() {
         while (!terminateMapThread_) {
             if (!isSimulation_) {

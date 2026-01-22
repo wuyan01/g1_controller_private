@@ -107,9 +107,7 @@ private:
 
     void simulate_heights()
     {
-        for(int i(0); i<heightmaphandler->numPoints_; i++) {
-            heightmaphandler->simulationHeights_(i) = heightmap->msg_.data()[heightmaphandler->measurementIndices_[i]];
-        }
+        heightmaphandler->updateSimulationHeights(heightmap->msg_.data());
     }
 };
 
