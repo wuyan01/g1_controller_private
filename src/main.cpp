@@ -99,6 +99,6 @@ int main(int argc, char** argv)
     spinner.start();
     ros::waitForShutdown();
     
-    return 0;
+    std::quick_exit(0);
 }
 
