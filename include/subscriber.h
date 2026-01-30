@@ -2,15 +2,17 @@
 
 #include "unitree/dds_wrapper/common/Subscription.h"
 #include <unitree/idl/go2/HeightMap_.hpp>
-#include <ros/ros.h>
-#include <nav_msgs/Odometry.h>
+#include <rclcpp/rclcpp.hpp>
+#include <nav_msgs/msg/odometry.hpp>
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/static_transform_broadcaster.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-#include <geometry_msgs/TransformStamped.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
+#include <tf2/LinearMath/Quaternion.h>
 #include <mutex>
+#include <string>
 
 
 class HeightMap : public unitree::robot::SubscriptionBase<unitree_go::msg::dds_::HeightMap_>
@@ -30,23 +32,24 @@ public:
 
     MotionCaptureState() {}
 
-    MotionCaptureState(ros::NodeHandle& nh, const std::string& mocap_topic = "/qualisys/base/odom")
+    MotionCaptureState(rclcpp::Node::SharedPtr nh, const std::string& mocap_topic = "/qualisys/base/odom")
     {
-        mocap_sub_ = nh.subscribe(mocap_topic, 10, &MotionCaptureState::mocapCallback, this);
+        mocap_sub_ = nh->create_subscription<nav_msgs::msg::Odometry>(
+            mocap_topic, 10, std::bind(&MotionCaptureState::mocapCallback, this, std::placeholders::_1));
         msg_.pose.pose.orientation.w = 1.0;
     }
 
-    nav_msgs::Odometry msg_;
+    nav_msgs::msg::Odometry msg_;
     std::mutex mutex_;
 
 private:
-    void mocapCallback(const nav_msgs::Odometry::ConstPtr& msg)
+    void mocapCallback(const nav_msgs::msg::Odometry::SharedPtr msg)
     {
         std::lock_guard<std::mutex> lock(mutex_);
         msg_ = *msg;
     }
 
-    ros::Subscriber mocap_sub_;
+    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr mocap_sub_;
 };
 
 
@@ -55,39 +58,45 @@ class FastLioState
 public:
     using SharedPtr = std::shared_ptr<FastLioState>;
 
-    FastLioState() : tf_listener_(tf_buffer_) {}
-
-    FastLioState(ros::NodeHandle& nh, const std::string& fastlio_topic = "/Odometry_loc")
-        : tf_listener_(tf_buffer_)
+    FastLioState(rclcpp::Node::SharedPtr nh, const std::string& fastlio_topic = "/Odometry_loc")
+        : nh_(nh)
     {
-        fastlio_sub_ = nh.subscribe(fastlio_topic, 10, &FastLioState::fastlioCallback, this);
-        msg_.pose.pose.orientation.x = 1.0;
+        tf_buffer_ = std::make_unique<tf2_ros::Buffer>(nh->get_clock());
+        tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+        br_ = std::make_unique<tf2_ros::TransformBroadcaster>(nh);
+        
+        fastlio_sub_ = nh->create_subscription<nav_msgs::msg::Odometry>(
+            fastlio_topic, 10, std::bind(&FastLioState::fastlioCallback, this, std::placeholders::_1));
+        msg_.pose.pose.orientation.x = 1.0; 
     }
 
-    nav_msgs::Odometry msg_;
+    nav_msgs::msg::Odometry msg_;
     std::mutex mutex_;
 
 private:
-    void fastlioCallback(const nav_msgs::Odometry::ConstPtr& msg)
+    void fastlioCallback(const nav_msgs::msg::Odometry::SharedPtr msg)
     {
         std::lock_guard<std::mutex> lock(mutex_);
 
         const std::string parent_frame = "torso_link";
         const std::string child_frame  = "mid360_link_inv";
-        geometry_msgs::TransformStamped torso_link_T_mid360_link_inv;
+        geometry_msgs::msg::TransformStamped torso_link_T_mid360_link_inv;
+        
+        if (!tf_buffer_) return;
+
         try
         {
-            if (!tf_buffer_.canTransform(parent_frame, child_frame, msg->header.stamp, ros::Duration(0.1)))
+            if (!tf_buffer_->canTransform(parent_frame, child_frame, msg->header.stamp, rclcpp::Duration::from_seconds(0.1)))
             {
-                ROS_WARN_THROTTLE(1.0, "Waiting for TF %s -> %s", parent_frame.c_str(), child_frame.c_str());
+                RCLCPP_WARN_THROTTLE(nh_->get_logger(), *nh_->get_clock(), 1000, "Waiting for TF %s -> %s", parent_frame.c_str(), child_frame.c_str());
                 return;
             }
 
-            torso_link_T_mid360_link_inv = tf_buffer_.lookupTransform(parent_frame, child_frame, msg->header.stamp);
+            torso_link_T_mid360_link_inv = tf_buffer_->lookupTransform(parent_frame, child_frame, msg->header.stamp);
         }
         catch (const tf2::TransformException& ex)
         {
-            ROS_WARN_THROTTLE(1.0, "TF lookup failed (%s -> %s): %s",
+            RCLCPP_WARN_THROTTLE(nh_->get_logger(), *nh_->get_clock(), 1000, "TF lookup failed (%s -> %s): %s",
                               parent_frame.c_str(), child_frame.c_str(), ex.what());
             return;
         }
@@ -104,12 +113,13 @@ private:
         torso_link_T_mid360_link_inv.header.stamp = msg->header.stamp;
         torso_link_T_mid360_link_inv.header.frame_id = "odom";
         torso_link_T_mid360_link_inv.child_frame_id = "camera_init";
-        br_.sendTransform(torso_link_T_mid360_link_inv);
+        
+        if (br_) br_->sendTransform(torso_link_T_mid360_link_inv);
     }
 
-    inline geometry_msgs::Pose transformToPoseMsg(const tf2::Transform& T)
+    inline geometry_msgs::msg::Pose transformToPoseMsg(const tf2::Transform& T)
     {
-        geometry_msgs::Pose p;
+        geometry_msgs::msg::Pose p;
         p.position.x = T.getOrigin().x();
         p.position.y = T.getOrigin().y();
         p.position.z = T.getOrigin().z();
@@ -117,9 +127,9 @@ private:
         return p;
     }
 
-    ros::Subscriber fastlio_sub_;
-    tf2_ros::TransformBroadcaster br_;
-    tf2_ros::StaticTransformBroadcaster static_br_;
-    tf2_ros::Buffer tf_buffer_;
-    tf2_ros::TransformListener tf_listener_;
+    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr fastlio_sub_;
+    std::unique_ptr<tf2_ros::TransformBroadcaster> br_;
+    std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
+    std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
+    rclcpp::Node::SharedPtr nh_;
 };

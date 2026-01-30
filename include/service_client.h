@@ -1,17 +1,19 @@
 #pragma once
 
 #include <yaml-cpp/yaml.h>
-#include <ros/ros.h>
-#include <tf/transform_listener.h>
-#include <tf_conversions/tf_eigen.h>
+#include <rclcpp/rclcpp.hpp>
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_eigen/tf2_eigen.hpp>
 #include <grid_map_core/GridMap.hpp>
-#include <grid_map_msgs/GetGridMap.h>
-#include <grid_map_ros/GridMapRosConverter.hpp>
-#include <visualization_msgs/Marker.h>
+#include <grid_map_msgs/srv/get_grid_map.hpp>
+#include <grid_map_ros/grid_map_ros.hpp>
+#include <visualization_msgs/msg/marker.hpp>
 #include <unitree/idl/go2/HeightMap_.hpp>
 #include <mutex>
 #include <random>
-
+#include <thread>
+#include <chrono>
 
 class HeightMapHandler
 {
@@ -20,22 +22,30 @@ public:
 
     HeightMapHandler() {}
 
-    HeightMapHandler(ros::NodeHandle& nh)
+    HeightMapHandler(rclcpp::Node::SharedPtr nh) : nh_(nh)
     {
         // elevation map client.
-        elevationMapClient_ = nh.serviceClient<grid_map_msgs::GetGridMap>("/elevation_mapping/get_raw_submap");
+        elevationMapClient_ = nh_->create_client<grid_map_msgs::srv::GetGridMap>("/elevation_mapping/get_raw_submap");
         // marker publisher.
-        markerPub_ = nh.advertise<visualization_msgs::Marker>("/elevation_mapping/foot_scan", 0);
+        markerPub_ = nh_->create_publisher<visualization_msgs::msg::Marker>("/elevation_mapping/foot_scan", 0);
 
-        // grid-map service message.
-        gridMapSrv_.request.length_x = 6.0;
-        gridMapSrv_.request.length_y = 6.0;
-        gridMapSrv_.request.position_x = 0.0;
-        gridMapSrv_.request.position_y = 0.0;
+        // buffer initialization
+        tf_buffer_ = std::make_unique<tf2_ros::Buffer>(nh_->get_clock());
+        tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+
+        // grid-map service request initialization
+        // Note: In ROS2, request is created per call or we can keep a template struct, but typically simpler to just set values.
+        // We will maintain default values in member variables or a cached request object if reused carefully.
+        cached_req_.length_x = 6.0;
+        cached_req_.length_y = 6.0;
+        cached_req_.position_x = 0.0;
+        cached_req_.position_y = 0.0;
+        
         // base height.
         baseHeight_ = 0.0;
 
-        isSimulation_ = nh.param<bool>("simulation", false);
+        isSimulation_ = nh_->declare_parameter<bool>("simulation", false);
+        
         measurementPoints_pub_ = std::make_unique<MeasurementPoints_t>("rt/measurementpoints");
     }
 
@@ -56,7 +66,7 @@ public:
         basePosition_ << 0.0, 0.0, 0.76;
         layerName_ = cfg["layer_name"].as<std::string>();
         odomFrameId_ = cfg["frame_id"].as<std::string>();
-        gridMapSrv_.request.frame_id = odomFrameId_;
+        cached_req_.frame_id = odomFrameId_;
 
         const std::vector<float> measurementPointsX = cfg["measurement_points"]["x"].as<std::vector<float>>();
         const std::vector<float> measurementPointsY = cfg["measurement_points"]["y"].as<std::vector<float>>();
@@ -107,15 +117,30 @@ public:
     }
 
     void update(const double x, const double y, const double z) {
-        gridMapSrv_.request.position_x = x;
-        gridMapSrv_.request.position_y = y;
+        auto request = std::make_shared<grid_map_msgs::srv::GetGridMap::Request>();
+        *request = cached_req_;
+        request->position_x = x;
+        request->position_y = y;
         baseHeight_ = z;
 
-        if (elevationMapClient_.call(gridMapSrv_)) {
-            grid_map::GridMapRosConverter::fromMessage(gridMapSrv_.response.map, gridMapBuffer_);
+        if (!elevationMapClient_->wait_for_service(std::chrono::milliseconds(100))) {
+             RCLCPP_WARN_THROTTLE(nh_->get_logger(), *nh_->get_clock(), 1000, "Service not available");
+             return;
+        }
+
+        auto result_future = elevationMapClient_->async_send_request(request);
+        
+        // Wait for the result. Since we are in a separate thread, we can block on the future.
+        // We give it a timeout to avoid hanging forever.
+        if (result_future.wait_for(std::chrono::seconds(1)) == std::future_status::ready)
+        {
+            auto response = result_future.get();
+            grid_map::GridMapRosConverter::fromMessage(response->map, gridMapBuffer_);
             processGridMap(gridMapBuffer_);
-        } else {
-            ROS_WARN_THROTTLE(0.1, "Couldn't call the map service");
+        }
+        else
+        {
+            RCLCPP_WARN_THROTTLE(nh_->get_logger(), *nh_->get_clock(), 1000, "Couldn't call the map service (timeout)");
             return;
         }
 
@@ -145,7 +170,7 @@ public:
                     height = getHeight(point(0), point(1));
                     } catch (...) {
                     height = 0.f;
-                    ROS_INFO_STREAM("[RLController] gridMap_.atPosition failed !");
+                    RCLCPP_INFO_STREAM(nh_->get_logger(), "[RLController] gridMap_.atPosition failed !");
                     }
                 }
                 measurementHeights_(i) = std::max(std::min(basePosition_(2) - 0.5 - height, 1.0), -1.0);
@@ -165,12 +190,12 @@ public:
             if (!mapInitialized_) {
             // std::normal_distribution<double> normDist(0., 1.);
             h = baseHeight_ - 0.76;  //+ normDist(mt_) * 0.10;
-            ROS_WARN_THROTTLE(1.0, "map is not initialized. filling random values");
+            RCLCPP_WARN_THROTTLE(nh_->get_logger(), *nh_->get_clock(), 1000, "map is not initialized. filling random values");
             }
         } catch (...) {
             // std::normal_distribution<double> normDist(0., 1.);
             h = baseHeight_ - 0.76;  // + normDist(mt_) * 0.10;
-            ROS_WARN_THROTTLE(0.2, "Got error at getting heigt from map. filling random values");
+            RCLCPP_WARN_THROTTLE(nh_->get_logger(), *nh_->get_clock(), 200, "Got error at getting heigt from map. filling random values");
         }
         return h;
     }
@@ -179,11 +204,11 @@ public:
         int numberOfPoints = static_cast<int>(measurementPoints_.rows());
         // add height map markers
         marker_.header.frame_id = "odom";
-        marker_.header.stamp = ros::Time();
+        marker_.header.stamp = nh_->now();
         marker_.ns = "rl_controller";
         marker_.id = 0;
-        marker_.type = visualization_msgs::Marker::SPHERE_LIST;
-        marker_.action = visualization_msgs::Marker::ADD;
+        marker_.type = visualization_msgs::msg::Marker::SPHERE_LIST;
+        marker_.action = visualization_msgs::msg::Marker::ADD;
         marker_.scale.x = 0.05;
         marker_.scale.y = 0.05;
         marker_.scale.z = 0.05;
@@ -200,20 +225,20 @@ public:
         int cnt = 0;
         for (int i = 0; i < scanPoints.rows(); i++) {
             // position
-            geometry_msgs::Point obj;
+            geometry_msgs::msg::Point obj;
             obj.x = scanPoints(i, 0);
             obj.y = scanPoints(i, 1);
             obj.z = scanPoints(i, 2);
             marker_.points[cnt] = obj;
             // color
-            std_msgs::ColorRGBA color;
+            std_msgs::msg::ColorRGBA color;
             color.a = 1.0;
             color.r = 1.0;
             marker_.colors[cnt] = color;
             cnt++;
         }
-        marker_.header.stamp = ros::Time::now();
-        markerPub_.publish(marker_);
+        marker_.header.stamp = nh_->now();
+        markerPub_->publish(marker_);
     }
 
     void updateSimulationHeights(std::vector<float> data) {
@@ -233,7 +258,7 @@ public:
                 update(basePosition_[0], basePosition_[1], basePosition_[2]);
             }
             updateScanMarker(heightMeasurementsVisualizer_);
-            usleep(10000);
+            usleep(10000); // 10ms
         }
     }
 
@@ -249,8 +274,8 @@ private:
 
     void processGridMap(grid_map::GridMap& gridMap) {
         Eigen::MatrixXf& map = gridMap.get(layerName_);
-        std::mt19937 mt{std::random_device{}()};
-        std::normal_distribution<double> normDist(0., 1.);
+        // std::mt19937 mt{std::random_device{}()};
+        // std::normal_distribution<double> normDist(0., 1.);
         float baseHeight = 0.0;
         for (size_t i = 0; i < map.cols(); i++) {
             for (size_t j = 0; j < map.rows(); j++) {
@@ -264,14 +289,15 @@ private:
     }
 
 
-    void updateTransform(std::string mapFrameId, ros::Time timeStamp) {
-        tf::StampedTransform transformTf;
+    void updateTransform(std::string mapFrameId, rclcpp::Time timeStamp) {
+        geometry_msgs::msg::TransformStamped transformTf;
         try {
-            transformListener_.waitForTransform(odomFrameId_, mapFrameId, timeStamp, ros::Duration(1.0));
-            transformListener_.lookupTransform(odomFrameId_, mapFrameId, timeStamp, transformTf);
-            tf::poseTFToEigen(transformTf, transformationOdomToMap_);
-        } catch (tf::TransformException& ex) {
-            ROS_ERROR("%s", ex.what());
+            if (tf_buffer_->canTransform(odomFrameId_, mapFrameId, timeStamp, rclcpp::Duration::from_seconds(1.0))) {
+                transformTf = tf_buffer_->lookupTransform(odomFrameId_, mapFrameId, timeStamp);
+                transformationOdomToMap_ = tf2::transformToEigen(transformTf.transform);
+            }
+        } catch (tf2::TransformException& ex) {
+            RCLCPP_ERROR(nh_->get_logger(), "%s", ex.what());
             return;
         }
     }
@@ -286,9 +312,12 @@ private:
     Eigen::MatrixX4d heightMeasurementsVisualizer_;
 
     // ROS services
-    ros::ServiceClient elevationMapClient_;
-    ros::Publisher markerPub_;
-    tf::TransformListener transformListener_;
+    rclcpp::Node::SharedPtr nh_;
+    rclcpp::Client<grid_map_msgs::srv::GetGridMap>::SharedPtr elevationMapClient_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr markerPub_;
+    
+    std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
+    std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 
     // Map thread termination flag and initialization flag.
     bool mapInitialized_ = false;
@@ -298,7 +327,7 @@ private:
     std::vector<size_t> footFrameIndicies_;
 
     // Grid map buffers.
-    grid_map_msgs::GetGridMap gridMapSrv_;
+    grid_map_msgs::srv::GetGridMap::Request cached_req_;
     grid_map::GridMap gridMap_;
     grid_map::GridMap gridMapBuffer_;
 
@@ -306,7 +335,7 @@ private:
     Eigen::Isometry3d transformationOdomToMap_;
 
     // Visualization marker.
-    visualization_msgs::Marker marker_;
+    visualization_msgs::msg::Marker marker_;
 
     // Random number generator.
     std::mt19937 mt_{std::random_device{}()};

@@ -10,7 +10,7 @@ class FSMState : public BaseState
 {
 public:
     FSMState(int state, std::string state_string) 
-    : BaseState(state, state_string), last_motioncapture_stamp_(0), last_lidar_stamp_(0)
+    : BaseState(state, state_string), last_motioncapture_stamp_(0, 0, RCL_ROS_TIME), last_lidar_stamp_(0, 0, RCL_ROS_TIME)
     {
         spdlog::info("Initializing State_{} ...", state_string);
 
@@ -58,7 +58,6 @@ public:
     {
         lowstate->update();
         if(keyboard) keyboard->update();
-        republish_lowstate_ros1();
         republish_jointstate();
         republish_imu();
         republish_posesourceodom();
@@ -67,7 +66,6 @@ public:
     void post_run()
     {
         lowcmd->unlockAndPublish();
-        republish_lowcmd_ros1();
     }
 
     static std::unique_ptr<LowCmd_t> lowcmd;
@@ -76,8 +74,6 @@ public:
     static std::shared_ptr<SportModeState_t> sportmodestate;
     static std::shared_ptr<MotionCaptureState_t> motioncapturestate;
     static std::shared_ptr<FastLioState_t> fastliostate;
-    static std::shared_ptr<LowCmdROS1_t> lowcmd_ros1;
-    static std::shared_ptr<LowStateROS1_t> lowstate_ros1;
     static std::shared_ptr<JointState_t> jointstate;
     static std::shared_ptr<Imu_t> imu;
     static std::shared_ptr<PoseSourceOdom_t> sportmodeodom;
@@ -89,108 +85,11 @@ public:
 private:
 
     std::vector<std::string> joint_names;
-    ros::Time last_motioncapture_stamp_;
-    ros::Time last_lidar_stamp_;
-
-    void republish_lowstate_ros1()
-    {
-        /* ---------------- version ---------------- */
-        for (int i = 0; i < 2; ++i) {
-            lowstate_ros1->msg_.version[i] =
-                lowstate->msg_.version()[i];
-        }
-
-        /* ---------------- modes ---------------- */
-        lowstate_ros1->msg_.mode_pr =
-            lowstate->msg_.mode_pr();
-
-        lowstate_ros1->msg_.mode_machine =
-            lowstate->msg_.mode_machine();
-
-        lowstate_ros1->msg_.tick =
-            lowstate->msg_.tick();
-
-        /* ---------------- imu_state ---------------- */
-        for (int i = 0; i < 4; ++i) {
-            lowstate_ros1->msg_.imu_state.quaternion[i] =
-                lowstate->msg_.imu_state().quaternion()[i];
-        }
-
-        for (int i = 0; i < 3; ++i) {
-            lowstate_ros1->msg_.imu_state.gyroscope[i] =
-                lowstate->msg_.imu_state().gyroscope()[i];
-
-            lowstate_ros1->msg_.imu_state.accelerometer[i] =
-                lowstate->msg_.imu_state().accelerometer()[i];
-
-            lowstate_ros1->msg_.imu_state.rpy[i] =
-                lowstate->msg_.imu_state().rpy()[i];
-        }
-
-        lowstate_ros1->msg_.imu_state.temperature =
-            lowstate->msg_.imu_state().temperature();
-
-        /* ---------------- motor_state ---------------- */
-        for (int i = 0; i < 35; ++i) {
-            lowstate_ros1->msg_.motor_state[i].mode =
-                lowstate->msg_.motor_state()[i].mode();
-
-            lowstate_ros1->msg_.motor_state[i].q =
-                lowstate->msg_.motor_state()[i].q();
-
-            lowstate_ros1->msg_.motor_state[i].dq =
-                lowstate->msg_.motor_state()[i].dq();
-
-            lowstate_ros1->msg_.motor_state[i].ddq =
-                lowstate->msg_.motor_state()[i].ddq();
-
-            lowstate_ros1->msg_.motor_state[i].tau_est =
-                lowstate->msg_.motor_state()[i].tau_est();
-
-            for (int j = 0; j < 2; ++j) {
-                lowstate_ros1->msg_.motor_state[i].temperature[j] =
-                    lowstate->msg_.motor_state()[i].temperature()[j];
-            }
-
-            lowstate_ros1->msg_.motor_state[i].vol =
-                lowstate->msg_.motor_state()[i].vol();
-
-            for (int j = 0; j < 2; ++j) {
-                lowstate_ros1->msg_.motor_state[i].sensor[j] =
-                    lowstate->msg_.motor_state()[i].sensor()[j];
-            }
-
-            lowstate_ros1->msg_.motor_state[i].motorstate =
-                lowstate->msg_.motor_state()[i].motorstate();
-
-            for (int j = 0; j < 4; ++j) {
-                lowstate_ros1->msg_.motor_state[i].reserve[j] =
-                    lowstate->msg_.motor_state()[i].reserve()[j];
-            }
-        }
-
-        /* ---------------- wireless_remote ---------------- */
-        for (int i = 0; i < 40; ++i) {
-            lowstate_ros1->msg_.wireless_remote[i] =
-                lowstate->msg_.wireless_remote()[i];
-        }
-
-        /* ---------------- reserve ---------------- */
-        for (int i = 0; i < 4; ++i) {
-            lowstate_ros1->msg_.reserve[i] =
-                lowstate->msg_.reserve()[i];
-        }
-
-        /* ---------------- crc ---------------- */
-        lowstate_ros1->msg_.crc =
-            lowstate->msg_.crc();
-
-        lowstate_ros1->publish();
-    }
+    rclcpp::Time last_motioncapture_stamp_;
+    rclcpp::Time last_lidar_stamp_;
 
     void republish_jointstate()
     {
-        jointstate->msg_.header.stamp = ros::Time::now();
         jointstate->msg_.name = joint_names;
         jointstate->msg_.position.resize(29);
         jointstate->msg_.velocity.resize(29);
@@ -212,7 +111,6 @@ private:
 
     void republish_imu()
     {
-        imu->msg_.header.stamp = ros::Time::now();
         imu->msg_.header.frame_id = "pelvis";
 
         imu->msg_.orientation.x = lowstate->msg_.imu_state().quaternion()[0];
@@ -233,8 +131,6 @@ private:
 
     void republish_posesourceodom()
     {
-        sportmodeodom->msg_.header.stamp = ros::Time::now();
-
         sportmodeodom->msg_.header.frame_id = "odom";
         sportmodeodom->msg_.child_frame_id = "pelvis";
         // position
@@ -287,71 +183,27 @@ private:
         
         sportmodeodom->publish();
 
-        if (motioncapturestate->msg_.header.stamp != last_motioncapture_stamp_) {
-            motioncaptureodom->msg_.header.stamp = motioncapturestate->msg_.header.stamp;
+        rclcpp::Time current_motioncapture_stamp = motioncapturestate->msg_.header.stamp;
+        if (current_motioncapture_stamp.nanoseconds() != last_motioncapture_stamp_.nanoseconds()) {
+            motioncaptureodom->msg_.header.stamp = current_motioncapture_stamp;
             motioncaptureodom->msg_.header.frame_id = "odom";
             motioncaptureodom->msg_.child_frame_id = "torso_link";
             motioncaptureodom->msg_.pose = motioncapturestate->msg_.pose;
             motioncaptureodom->msg_.twist = motioncapturestate->msg_.twist;
             motioncaptureodom->publish();
         }
-        last_motioncapture_stamp_ = motioncapturestate->msg_.header.stamp;
+        last_motioncapture_stamp_ = current_motioncapture_stamp;
 
-        if (fastliostate->msg_.header.stamp != last_lidar_stamp_) {
-            lidarodom->msg_.header.stamp = fastliostate->msg_.header.stamp;
+        rclcpp::Time current_fastlio_stamp = fastliostate->msg_.header.stamp;
+        if (current_fastlio_stamp.nanoseconds() != last_lidar_stamp_.nanoseconds()) {
+            lidarodom->msg_.header.stamp = current_fastlio_stamp;
             lidarodom->msg_.header.frame_id = "odom";
             lidarodom->msg_.child_frame_id = "mid360_link_inv";
             lidarodom->msg_.pose = fastliostate->msg_.pose;
             lidarodom->msg_.twist = fastliostate->msg_.twist;
             lidarodom->publish();
         }
-        last_lidar_stamp_ = fastliostate->msg_.header.stamp;
-    }
-
-    void republish_lowcmd_ros1()
-    {
-        /* ---------------- modes ---------------- */
-        lowcmd_ros1->msg_.mode_pr =
-            lowcmd->msg_.mode_pr();
-
-        lowcmd_ros1->msg_.mode_machine =
-            lowcmd->msg_.mode_machine();
-
-        /* ---------------- motor_cmd ---------------- */
-        for (int i = 0; i < 35; ++i) {
-            lowcmd_ros1->msg_.motor_cmd[i].mode =
-                lowcmd->msg_.motor_cmd()[i].mode();
-
-            lowcmd_ros1->msg_.motor_cmd[i].q =
-                lowcmd->msg_.motor_cmd()[i].q();
-
-            lowcmd_ros1->msg_.motor_cmd[i].dq =
-                lowcmd->msg_.motor_cmd()[i].dq();
-
-            lowcmd_ros1->msg_.motor_cmd[i].tau =
-                lowcmd->msg_.motor_cmd()[i].tau();
-
-            lowcmd_ros1->msg_.motor_cmd[i].kp =
-                lowcmd->msg_.motor_cmd()[i].kp();
-
-            lowcmd_ros1->msg_.motor_cmd[i].kd =
-                lowcmd->msg_.motor_cmd()[i].kd();
-
-            lowcmd_ros1->msg_.motor_cmd[i].reserve =
-                lowcmd->msg_.motor_cmd()[i].reserve();
-        }
-
-        /* ---------------- reserve ---------------- */
-        for (int i = 0; i < 4; ++i) {
-            lowcmd_ros1->msg_.reserve[i] =
-                lowcmd->msg_.reserve()[i];
-        }
-
-        /* ---------------- crc ---------------- */
-        lowcmd_ros1->msg_.crc =
-            lowcmd->msg_.crc();
-
-        lowcmd_ros1->publish();
+        last_lidar_stamp_ = current_fastlio_stamp;
     }
 
 };

@@ -15,7 +15,7 @@
 #include <spdlog/sinks/rotating_file_sink.h>
 #include <memory>
 #include <iomanip>
-#include <ros/package.h>
+#include <ament_index_cpp/get_package_share_directory.hpp>
 
 /* ---------- logger ---------- */
 namespace spdlog
@@ -47,14 +47,23 @@ inline YAML::Node config;
 /* ---------- config.yaml ---------- */
 inline void load_config_file()
 {
-        proj_dir = ros::package::getPath("g1_controller");
-        config_dir = proj_dir / "config";
+    try {
+        proj_dir = ament_index_cpp::get_package_share_directory("g1_controller");
+    } catch (const std::exception& e) {
+        spdlog::error("Failed to get package share directory: {}", e.what());
+        exit(1);
+    }
+    
+    config_dir = proj_dir / "config";
 
     try {
         std::string config_file = (config_dir / "config.yaml").string();
         if(std::filesystem::exists(config_file))
         {
             config = YAML::LoadFile(config_file);
+        } else {
+             spdlog::error("Config file not found: {}", config_file);
+             exit(1);
         }
     } catch (const YAML::BadFile& e) {
         spdlog::error("Failed to load config.yaml: {}", e.what());
@@ -78,7 +87,7 @@ inline po::variables_map helper(int argc, char** argv)
         ;
 
     po::variables_map vm;
-    po::store(po::parse_command_line(argc, argv, desc), vm);
+    po::store(po::command_line_parser(argc, argv).options(desc).allow_unregistered().run(), vm);
     po::notify(vm);
 
     if (vm.count("help"))
@@ -99,8 +108,9 @@ inline po::variables_map helper(int argc, char** argv)
 #endif
     if(vm.count("log"))
     {
-        std::filesystem::create_directories(proj_dir / "log");
-        spdlog::create_logger(proj_dir.string() + "/log/log.txt");
+        auto log_dir = std::filesystem::current_path() / "log";
+        std::filesystem::create_directories(log_dir);
+        spdlog::create_logger((log_dir / "log.txt").string());
     }
 
     return vm;

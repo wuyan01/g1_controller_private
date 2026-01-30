@@ -111,7 +111,7 @@ State_Mimic::State_Mimic(int state_mode, std::string state_string)
 : FSMState(state_mode, state_string) 
 {
     auto cfg = param::config["FSM"][state_string];
-    std::filesystem::path package_path = ros::package::getPath("g1_controller");
+    std::filesystem::path package_path = ament_index_cpp::get_package_share_directory("g1_controller");
     auto policy_dir = package_path / cfg["policy_dir"].as<std::string>();
 
     auto articulation = std::make_shared<unitree::BaseArticulation<LowState_t::SharedPtr>>(FSMState::lowstate);

@@ -1,73 +1,19 @@
 #pragma once
 
-#include <ros/ros.h>
-#include <sensor_msgs/JointState.h>
-#include <sensor_msgs/Imu.h>
-#include <nav_msgs/Odometry.h>
-#include <visualization_msgs/MarkerArray.h>
-#include <visualization_msgs/Marker.h>
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/joint_state.hpp>
+#include <sensor_msgs/msg/imu.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
+#include <visualization_msgs/msg/marker.hpp>
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-#include <geometry_msgs/TransformStamped.h>
-#include <g1_controller/LowState.h>
-#include <g1_controller/LowCmd.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include <tf2_eigen/tf2_eigen.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
 #include <mutex>
-
-
-class LowCmdROS1
-{
-public:
-    using SharedPtr = std::shared_ptr<LowCmdROS1>;
-
-    LowCmdROS1() {}
-
-    LowCmdROS1(ros::NodeHandle& nh, const std::string& lowcmd_topic = "lowcmd", uint32_t queue_size = 10)
-    {
-        lowcmd_pub_ = nh.advertise<g1_controller::LowCmd>(lowcmd_topic, queue_size);
-    }
-
-    void publish()
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        lowcmd_pub_.publish(msg_);
-    }
-
-    g1_controller::LowCmd msg_;
-    std::mutex mutex_;
-
-private:
-
-    ros::Publisher lowcmd_pub_;
-};
-
-
-class LowStateROS1
-{
-public:
-    using SharedPtr = std::shared_ptr<LowStateROS1>;
-
-    LowStateROS1() {}
-
-    LowStateROS1(ros::NodeHandle& nh, const std::string& lowstate_topic = "lowstate", uint32_t queue_size = 10)
-    {
-        lowstate_pub_ = nh.advertise<g1_controller::LowState>(lowstate_topic, queue_size);
-    }
-
-    void publish()
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        lowstate_pub_.publish(msg_);
-    }
-
-    g1_controller::LowState msg_;
-    std::mutex mutex_;
-
-private:
-
-    ros::Publisher lowstate_pub_;
-};
+#include <string>
 
 
 class JointState
@@ -77,23 +23,25 @@ public:
 
     JointState() {}
 
-    JointState(ros::NodeHandle& nh, const std::string& jointstate_topic = "joint_states", uint32_t queue_size = 10)
+    JointState(rclcpp::Node::SharedPtr nh, const std::string& jointstate_topic = "joint_states", uint32_t queue_size = 10)
     {
-        jointstate_pub_ = nh.advertise<sensor_msgs::JointState>(jointstate_topic, queue_size);
+        clock_ = nh->get_clock();
+        jointstate_pub_ = nh->create_publisher<sensor_msgs::msg::JointState>(jointstate_topic, queue_size);
     }
 
     void publish()
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        jointstate_pub_.publish(msg_);
+        msg_.header.stamp = clock_->now();
+        jointstate_pub_->publish(msg_);
     }
 
-    sensor_msgs::JointState msg_;
+    sensor_msgs::msg::JointState msg_;
     std::mutex mutex_;
 
 private:
-
-    ros::Publisher jointstate_pub_;
+    rclcpp::Clock::SharedPtr clock_;
+    rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr jointstate_pub_;
 };
 
 
@@ -104,23 +52,25 @@ public:
 
     Imu() {}
 
-    Imu(ros::NodeHandle& nh, const std::string& imu_topic = "imu", uint32_t queue_size = 10)
+    Imu(rclcpp::Node::SharedPtr nh, const std::string& imu_topic = "imu", uint32_t queue_size = 10)
     {
-        imu_pub_ = nh.advertise<sensor_msgs::Imu>(imu_topic, queue_size);
+        clock_ = nh->get_clock();
+        imu_pub_ = nh->create_publisher<sensor_msgs::msg::Imu>(imu_topic, queue_size);
     }
 
     void publish()
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        imu_pub_.publish(msg_);
+        msg_.header.stamp = clock_->now();
+        imu_pub_->publish(msg_);
     }
 
-    sensor_msgs::Imu msg_;
+    sensor_msgs::msg::Imu msg_;
     std::mutex mutex_;
 
 private:
-
-    ros::Publisher imu_pub_;
+    rclcpp::Clock::SharedPtr clock_;
+    rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
 };
 
 
@@ -131,9 +81,10 @@ public:
 
     VelocityMarkers() {}
 
-    VelocityMarkers(ros::NodeHandle& nh, const std::string& velocitymarkers_topic = "velocity_markers", uint32_t queue_size = 10)
+    VelocityMarkers(rclcpp::Node::SharedPtr nh, const std::string& velocitymarkers_topic = "velocity_markers", uint32_t queue_size = 10)
     {
-        marker_pub_ = nh.advertise<visualization_msgs::MarkerArray>(velocitymarkers_topic, queue_size);
+        clock_ = nh->get_clock();
+        marker_pub_ = nh->create_publisher<visualization_msgs::msg::MarkerArray>(velocitymarkers_topic, queue_size);
     }
 
     void publish()
@@ -142,12 +93,12 @@ public:
 
         marker_array_.markers.clear();
         
-        cmd_marker_.header.stamp = ros::Time::now();
+        cmd_marker_.header.stamp = rclcpp::Time(0, 0, clock_->get_clock_type());
         cmd_marker_.header.frame_id = "torso_link";
         cmd_marker_.ns = "cmd_vel";
         cmd_marker_.id = 0;
-        cmd_marker_.type = visualization_msgs::Marker::ARROW;
-        cmd_marker_.action = visualization_msgs::Marker::ADD;
+        cmd_marker_.type = visualization_msgs::msg::Marker::ARROW;
+        cmd_marker_.action = visualization_msgs::msg::Marker::ADD;
 
         cmd_marker_.pose.orientation.x = 0.0;
         cmd_marker_.pose.orientation.y = 0.0;
@@ -164,12 +115,12 @@ public:
         cmd_marker_.color.a = 0.9f;
 
 
-        real_marker_.header.stamp = ros::Time::now();
+        real_marker_.header.stamp = rclcpp::Time(0, 0, clock_->get_clock_type());
         real_marker_.header.frame_id = "torso_link";
         real_marker_.ns = "real_vel";
         real_marker_.id = 1;
-        real_marker_.type = visualization_msgs::Marker::ARROW;
-        real_marker_.action = visualization_msgs::Marker::ADD;
+        real_marker_.type = visualization_msgs::msg::Marker::ARROW;
+        real_marker_.action = visualization_msgs::msg::Marker::ADD;
 
         real_marker_.pose.orientation.x = 0.0;
         real_marker_.pose.orientation.y = 0.0;
@@ -187,17 +138,17 @@ public:
 
         marker_array_.markers.push_back(cmd_marker_);
         marker_array_.markers.push_back(real_marker_);
-        marker_pub_.publish(marker_array_);
+        marker_pub_->publish(marker_array_);
     }
 
-    visualization_msgs::MarkerArray marker_array_;
-    visualization_msgs::Marker cmd_marker_;
-    visualization_msgs::Marker real_marker_;
+    visualization_msgs::msg::MarkerArray marker_array_;
+    visualization_msgs::msg::Marker cmd_marker_;
+    visualization_msgs::msg::Marker real_marker_;
     std::mutex mutex_;
 
 private:
-
-    ros::Publisher marker_pub_;
+    rclcpp::Clock::SharedPtr clock_;
+    rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
 };
 
 
@@ -208,23 +159,25 @@ public:
 
     PoseSourceOdom() {}
 
-    PoseSourceOdom(ros::NodeHandle& nh, const std::string& pose_source_odom_topic = "pose_source/odom", uint32_t queue_size = 10)
+    PoseSourceOdom(rclcpp::Node::SharedPtr nh, const std::string& pose_source_odom_topic = "pose_source/odom", uint32_t queue_size = 10)
     {
-        pose_source_odom_pub_ = nh.advertise<nav_msgs::Odometry>(pose_source_odom_topic, queue_size);
+        clock_ = nh->get_clock();
+        pose_source_odom_pub_ = nh->create_publisher<nav_msgs::msg::Odometry>(pose_source_odom_topic, queue_size);
     }
 
     void publish()
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        pose_source_odom_pub_.publish(msg_);
+        msg_.header.stamp = clock_->now();
+        pose_source_odom_pub_->publish(msg_);
     }
 
-    nav_msgs::Odometry msg_;
+    nav_msgs::msg::Odometry msg_;
     std::mutex mutex_;
 
 private:
-
-    ros::Publisher pose_source_odom_pub_;
+    rclcpp::Clock::SharedPtr clock_;
+    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pose_source_odom_pub_;
 };
 
 class OdometryFusion
@@ -232,48 +185,52 @@ class OdometryFusion
 public:
     using SharedPtr = std::shared_ptr<OdometryFusion>;
 
-    OdometryFusion() : tf_listener_(tf_buffer_), last_tf_stamp_(0) {}
-    
-    OdometryFusion(ros::NodeHandle& nh,
+    OdometryFusion(rclcpp::Node::SharedPtr nh,
                          const std::string& input_odom_topic  = "pose_source/odom",
                          const std::string& output_odom_frame = "pelvis",
                          uint32_t queue_size = 10)
-        : tf_listener_(tf_buffer_), output_odom_frame_(output_odom_frame), last_tf_stamp_(0)
+        : output_odom_frame_(output_odom_frame), last_tf_stamp_(0, 0, RCL_ROS_TIME), nh_(nh)
     {
-        odom_sub_ = nh.subscribe(input_odom_topic,
-                                 queue_size,
-                                 &OdometryFusion::odomCallback,
-                                 this);
+        tf_buffer_ = std::make_unique<tf2_ros::Buffer>(nh->get_clock());
+        tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+        br_ = std::make_unique<tf2_ros::TransformBroadcaster>(nh);
 
-        target_odom_pub_ = nh.advertise<nav_msgs::Odometry>(output_odom_frame + "_odom",
-                                                           queue_size);
+        odom_sub_ = nh->create_subscription<nav_msgs::msg::Odometry>(
+            input_odom_topic,
+            queue_size,
+            std::bind(&OdometryFusion::odomCallback, this, std::placeholders::_1));
+
+        target_odom_pub_ = nh->create_publisher<nav_msgs::msg::Odometry>(output_odom_frame + "_odom", queue_size);
         last_valid_ = false;
+        last_stamp_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
     }
 
-    nav_msgs::Odometry msg_;
+    nav_msgs::msg::Odometry msg_;
     std::mutex mutex_;
 
 private:
     const std::string output_odom_frame_;
-    ros::Subscriber odom_sub_;
-    ros::Publisher target_odom_pub_;
+    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr target_odom_pub_;
 
-    tf2_ros::TransformBroadcaster br_;
-    tf2_ros::Buffer tf_buffer_;
-    tf2_ros::TransformListener tf_listener_;
+    std::unique_ptr<tf2_ros::TransformBroadcaster> br_;
+    std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
+    std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
+
+    rclcpp::Node::SharedPtr nh_;
 
     bool last_valid_;
-    ros::Time last_stamp_;
-    ros::Time last_tf_stamp_;
+    rclcpp::Time last_stamp_;
+    rclcpp::Time last_tf_stamp_;
     tf2::Transform last_T_odom_target_;
 
-    void odomCallback(const nav_msgs::OdometryConstPtr& msg)
+    void odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg)
     {
         std::lock_guard<std::mutex> lock(mutex_);
         const std::string parent_frame = msg->header.frame_id;
         if (parent_frame != "odom")
         {
-            ROS_ERROR_THROTTLE(1.0,
+            RCLCPP_ERROR_THROTTLE(nh_->get_logger(), *nh_->get_clock(), 1000,
                 "Input odometry frame_id is not 'odom' (got '%s')",
                 parent_frame.c_str());
             return;
@@ -282,7 +239,7 @@ private:
         const std::string& source_link = msg->child_frame_id;
         if (source_link.empty())
         {
-            ROS_WARN_THROTTLE(1.0, "Incoming odometry has empty child_frame_id");
+            RCLCPP_WARN_THROTTLE(nh_->get_logger(), *nh_->get_clock(), 1000, "Incoming odometry has empty child_frame_id");
             return;
         }
         tf2::Transform T_odom_target;
@@ -300,35 +257,36 @@ private:
             {
                 computeTwistFromPoseDifference(msg, T_odom_source, msg_.twist.twist);
             }
-            target_odom_pub_.publish(msg_);
+            target_odom_pub_->publish(msg_);
             T_odom_target = T_odom_source;
         }
         else
         {
+            if (!tf_buffer_) return;
 
             // Wait for target <- source_link TF
-            if (!tf_buffer_.canTransform(output_odom_frame_,
+            if (!tf_buffer_->canTransform(output_odom_frame_,
                                         source_link,
                                         msg->header.stamp,
-                                        ros::Duration(0.1)))
+                                        rclcpp::Duration::from_seconds(0.1)))
             {
-                ROS_WARN_THROTTLE(1.0,
+                RCLCPP_WARN_THROTTLE(nh_->get_logger(), *nh_->get_clock(), 1000,
                     "Waiting for TF %s -> %s",
                     output_odom_frame_.c_str(),
                     source_link.c_str());
                 return;
             }
-            geometry_msgs::TransformStamped target_T_source;
+            geometry_msgs::msg::TransformStamped target_T_source;
             try
             {
                 target_T_source =
-                    tf_buffer_.lookupTransform(output_odom_frame_,
+                    tf_buffer_->lookupTransform(output_odom_frame_,
                                             source_link,
                                             msg->header.stamp);
             }
             catch (const tf2::TransformException& ex)
             {
-                ROS_WARN_THROTTLE(1.0,
+                RCLCPP_WARN_THROTTLE(nh_->get_logger(), *nh_->get_clock(), 1000,
                     "TF lookup failed (%s -> %s): %s",
                     output_odom_frame_.c_str(),
                     source_link.c_str(),
@@ -367,20 +325,20 @@ private:
             {
                 transformTwistChildToChild(msg, T_odom_source, T_odom_target, msg_.twist.twist);
             }
-            target_odom_pub_.publish(msg_);
+            target_odom_pub_->publish(msg_);
         }
 
         // ----------------------------
         // Publish TF: odom -> target
         // ----------------------------
-        if (output_odom_frame_ == "pelvis" && msg_.header.stamp > last_tf_stamp_)
+        if (output_odom_frame_ == "pelvis" && rclcpp::Time(msg_.header.stamp) > last_tf_stamp_)
         {
-            geometry_msgs::TransformStamped tf;
+            geometry_msgs::msg::TransformStamped tf;
             tf.header = msg_.header;
             tf.child_frame_id = output_odom_frame_;
             tf.transform = tf2::toMsg(T_odom_target);
 
-            br_.sendTransform(tf);
+            if (br_) br_->sendTransform(tf);
         }
         last_tf_stamp_ = msg_.header.stamp;
     }
@@ -395,9 +353,9 @@ private:
         return R;
     }
 
-    inline geometry_msgs::Pose transformToPoseMsg(const tf2::Transform& T)
+    inline geometry_msgs::msg::Pose transformToPoseMsg(const tf2::Transform& T)
     {
-        geometry_msgs::Pose p;
+        geometry_msgs::msg::Pose p;
         p.position.x = T.getOrigin().x();
         p.position.y = T.getOrigin().y();
         p.position.z = T.getOrigin().z();
@@ -406,9 +364,9 @@ private:
     }
 
     void computeTwistFromPoseDifference(
-        const nav_msgs::OdometryConstPtr& msg,
+        const nav_msgs::msg::Odometry::SharedPtr msg,
         const tf2::Transform& T_odom_target,
-        geometry_msgs::Twist& twist_out)
+        geometry_msgs::msg::Twist& twist_out)
     {
         if (!last_valid_)
         {
@@ -416,17 +374,17 @@ private:
             last_stamp_ = msg->header.stamp;
             last_valid_ = true;
 
-            twist_out = geometry_msgs::Twist();
+            twist_out = geometry_msgs::msg::Twist();
             return;
         }
 
-        const double dt = (msg->header.stamp - last_stamp_).toSec();
+        const double dt = (rclcpp::Time(msg->header.stamp) - last_stamp_).seconds();
         if (dt <= 0.0) {
-            twist_out = geometry_msgs::Twist();
+            twist_out = geometry_msgs::msg::Twist();
             return; // don't update on out-of-order
         }
         if (dt <= 1e-4) {
-            twist_out = geometry_msgs::Twist();
+            twist_out = geometry_msgs::msg::Twist();
             last_T_odom_target_ = T_odom_target;
             last_stamp_ = msg->header.stamp;
             return;
@@ -475,10 +433,10 @@ private:
     }
 
     void transformTwistChildToChild(
-        const nav_msgs::OdometryConstPtr& msg,
+        const nav_msgs::msg::Odometry::SharedPtr msg,
         const tf2::Transform& T_odom_source,
         const tf2::Transform& T_odom_target,
-        geometry_msgs::Twist& twist_out)
+        geometry_msgs::msg::Twist& twist_out)
     {
         // source twist in source frame
         Eigen::Vector3d v_s(msg->twist.twist.linear.x,

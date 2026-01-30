@@ -3,7 +3,7 @@
 #include "FSM/State_FixStand.h"
 #include "FSM/State_RLBase.h"
 #include "State_Mimic.h"
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 
 
 std::unique_ptr<LowCmd_t> FSMState::lowcmd = nullptr;
@@ -12,8 +12,6 @@ std::shared_ptr<Keyboard> FSMState::keyboard = std::make_shared<Keyboard>();
 std::shared_ptr<SportModeState_t> FSMState::sportmodestate = nullptr;
 std::shared_ptr<MotionCaptureState_t> FSMState::motioncapturestate = nullptr;
 std::shared_ptr<FastLioState_t> FSMState::fastliostate = nullptr;
-std::shared_ptr<LowCmdROS1_t> FSMState::lowcmd_ros1 = nullptr;
-std::shared_ptr<LowStateROS1_t> FSMState::lowstate_ros1 = nullptr;
 std::shared_ptr<JointState_t> FSMState::jointstate = nullptr;
 std::shared_ptr<Imu_t> FSMState::imu = nullptr;
 std::shared_ptr<VelocityMarkers_t> State_RLBase::velocitymarkers = nullptr;
@@ -26,7 +24,7 @@ std::shared_ptr<HeightMap_t> State_RLBase::heightmap = nullptr;
 std::shared_ptr<HeightMapHandler_t> State_RLBase::heightmaphandler = nullptr;
 std::string FSMState::network_interface = "lo";
 
-void init_fsm_state(ros::NodeHandle& nh)
+void init_fsm_state(rclcpp::Node::SharedPtr nh)
 {
     auto lowcmd_sub = std::make_shared<unitree::robot::g1::subscription::LowCmd>();
     usleep(0.2 * 1e6);
@@ -41,8 +39,6 @@ void init_fsm_state(ros::NodeHandle& nh)
     FSMState::sportmodestate = std::make_shared<SportModeState_t>();
     FSMState::motioncapturestate = std::make_shared<MotionCaptureState_t>(nh, "/qualisys/base/odom");
     FSMState::fastliostate = std::make_shared<FastLioState_t>(nh, "/Odometry_loc");
-    FSMState::lowcmd_ros1 = std::make_shared<LowCmdROS1_t>(nh, "lowcmd");
-    FSMState::lowstate_ros1 = std::make_shared<LowStateROS1_t>(nh, "lowstate");
     FSMState::jointstate = std::make_shared<JointState_t>(nh, "joint_states");
     FSMState::imu = std::make_shared<Imu_t>(nh, "imu");
     State_RLBase::velocitymarkers = std::make_shared<VelocityMarkers_t>(nh, "velocity_markers");
@@ -61,12 +57,12 @@ void init_fsm_state(ros::NodeHandle& nh)
 int main(int argc, char** argv)
 {
     // Initialize ROS
-    ros::init(argc, argv, "g1_controller");
-    ros::NodeHandle nh("~");
+    rclcpp::init(argc, argv);
+    auto nh = std::make_shared<rclcpp::Node>("g1_controller");
 
     // Get parameters
     std::string network;
-    nh.param<std::string>("network", network, std::string("lo"));
+    nh->get_parameter_or<std::string>("network", network, std::string("lo"));
 
     // Load parameters
     auto vm = param::helper(argc, argv);
@@ -95,10 +91,10 @@ int main(int argc, char** argv)
     spdlog::info("And then press [A] to start controlling the robot.");
     spdlog::info("Press [Select] to enter Passive mode.");
 
-    ros::AsyncSpinner spinner(2);
-    spinner.start();
-    ros::waitForShutdown();
+    rclcpp::executors::MultiThreadedExecutor executor;
+    executor.add_node(nh);
+    executor.spin();
+    rclcpp::shutdown();
     
     std::quick_exit(0);
 }
-
