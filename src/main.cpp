@@ -61,8 +61,8 @@ int main(int argc, char** argv)
     auto nh = std::make_shared<rclcpp::Node>("g1_controller");
 
     // Get parameters
-    std::string network;
-    nh->get_parameter_or<std::string>("network", network, std::string("lo"));
+    std::string network = nh->declare_parameter<std::string>("network", "lo");
+    std::cout << "Using network interface: " << network << std::endl;
 
     // Load parameters
     auto vm = param::helper(argc, argv);
