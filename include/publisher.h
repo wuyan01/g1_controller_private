@@ -192,7 +192,7 @@ public:
         : output_odom_frame_(output_odom_frame), last_tf_stamp_(0, 0, RCL_ROS_TIME), nh_(nh)
     {
         tf_buffer_ = std::make_unique<tf2_ros::Buffer>(nh->get_clock());
-        tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+        tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_, nh);
         br_ = std::make_unique<tf2_ros::TransformBroadcaster>(nh);
 
         odom_sub_ = nh->create_subscription<nav_msgs::msg::Odometry>(
