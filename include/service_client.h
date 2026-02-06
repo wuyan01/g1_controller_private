@@ -22,15 +22,15 @@ public:
 
     HeightMapHandler() {}
 
-    HeightMapHandler(rclcpp::Node::SharedPtr nh) : nh_(nh)
+    HeightMapHandler(rclcpp::Node::SharedPtr node) : node_(node)
     {
         // elevation map client.
-        elevationMapClient_ = nh_->create_client<grid_map_msgs::srv::GetGridMap>("/elevation_mapping/get_raw_submap");
+        elevationMapClient_ = node_->create_client<grid_map_msgs::srv::GetGridMap>("/elevation_mapping/get_raw_submap");
         // marker publisher.
-        markerPub_ = nh_->create_publisher<visualization_msgs::msg::Marker>("/elevation_mapping/foot_scan", 0);
+        markerPub_ = node_->create_publisher<visualization_msgs::msg::Marker>("/elevation_mapping/foot_scan", 0);
 
         // buffer initialization
-        tf_buffer_ = std::make_unique<tf2_ros::Buffer>(nh_->get_clock());
+        tf_buffer_ = std::make_unique<tf2_ros::Buffer>(node_->get_clock());
         tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
         // grid-map service request initialization
@@ -44,7 +44,7 @@ public:
         // base height.
         baseHeight_ = 0.0;
 
-        isSimulation_ = nh_->declare_parameter<bool>("simulation", false);
+        isSimulation_ = node_->declare_parameter<bool>("simulation", false);
         
         measurementPoints_pub_ = std::make_unique<MeasurementPoints_t>("rt/measurementpoints");
     }
@@ -124,7 +124,7 @@ public:
         baseHeight_ = z;
 
         if (!elevationMapClient_->wait_for_service(std::chrono::milliseconds(100))) {
-             RCLCPP_WARN_THROTTLE(nh_->get_logger(), *nh_->get_clock(), 1000, "Service not available");
+             RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 1000, "Service not available");
              return;
         }
 
@@ -140,7 +140,7 @@ public:
         }
         else
         {
-            RCLCPP_WARN_THROTTLE(nh_->get_logger(), *nh_->get_clock(), 1000, "Couldn't call the map service (timeout)");
+            RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 1000, "Couldn't call the map service (timeout)");
             return;
         }
 
@@ -170,7 +170,7 @@ public:
                     height = getHeight(point(0), point(1));
                     } catch (...) {
                     height = 0.f;
-                    RCLCPP_INFO_STREAM(nh_->get_logger(), "[RLController] gridMap_.atPosition failed !");
+                    RCLCPP_INFO_STREAM(node_->get_logger(), "[RLController] gridMap_.atPosition failed !");
                     }
                 }
                 measurementHeights_(i) = std::max(std::min(basePosition_(2) - 0.5 - height, 1.0), -1.0);
@@ -190,12 +190,12 @@ public:
             if (!mapInitialized_) {
             // std::normal_distribution<double> normDist(0., 1.);
             h = baseHeight_ - 0.76;  //+ normDist(mt_) * 0.10;
-            RCLCPP_WARN_THROTTLE(nh_->get_logger(), *nh_->get_clock(), 1000, "map is not initialized. filling random values");
+            RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 1000, "map is not initialized. filling random values");
             }
         } catch (...) {
             // std::normal_distribution<double> normDist(0., 1.);
             h = baseHeight_ - 0.76;  // + normDist(mt_) * 0.10;
-            RCLCPP_WARN_THROTTLE(nh_->get_logger(), *nh_->get_clock(), 200, "Got error at getting heigt from map. filling random values");
+            RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 200, "Got error at getting heigt from map. filling random values");
         }
         return h;
     }
@@ -204,7 +204,7 @@ public:
         int numberOfPoints = static_cast<int>(measurementPoints_.rows());
         // add height map markers
         marker_.header.frame_id = "odom";
-        marker_.header.stamp = nh_->now();
+        marker_.header.stamp = node_->now();
         marker_.ns = "rl_controller";
         marker_.id = 0;
         marker_.type = visualization_msgs::msg::Marker::SPHERE_LIST;
@@ -237,7 +237,7 @@ public:
             marker_.colors[cnt] = color;
             cnt++;
         }
-        marker_.header.stamp = nh_->now();
+        marker_.header.stamp = node_->now();
         markerPub_->publish(marker_);
     }
 
@@ -297,7 +297,7 @@ private:
                 transformationOdomToMap_ = tf2::transformToEigen(transformTf.transform);
             }
         } catch (tf2::TransformException& ex) {
-            RCLCPP_ERROR(nh_->get_logger(), "%s", ex.what());
+            RCLCPP_ERROR(node_->get_logger(), "%s", ex.what());
             return;
         }
     }
@@ -312,7 +312,7 @@ private:
     Eigen::MatrixX4d heightMeasurementsVisualizer_;
 
     // ROS services
-    rclcpp::Node::SharedPtr nh_;
+    rclcpp::Node::SharedPtr node_;
     rclcpp::Client<grid_map_msgs::srv::GetGridMap>::SharedPtr elevationMapClient_;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr markerPub_;
     

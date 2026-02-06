@@ -23,10 +23,10 @@ public:
 
     JointState() {}
 
-    JointState(rclcpp::Node::SharedPtr nh, const std::string& jointstate_topic = "joint_states", uint32_t queue_size = 10)
+    JointState(rclcpp::Node::SharedPtr node, const std::string& jointstate_topic = "joint_states", uint32_t queue_size = 10)
     {
-        clock_ = nh->get_clock();
-        jointstate_pub_ = nh->create_publisher<sensor_msgs::msg::JointState>(jointstate_topic, queue_size);
+        clock_ = node->get_clock();
+        jointstate_pub_ = node->create_publisher<sensor_msgs::msg::JointState>(jointstate_topic, queue_size);
     }
 
     void publish()
@@ -52,10 +52,10 @@ public:
 
     Imu() {}
 
-    Imu(rclcpp::Node::SharedPtr nh, const std::string& imu_topic = "imu", uint32_t queue_size = 10)
+    Imu(rclcpp::Node::SharedPtr node, const std::string& imu_topic = "imu", uint32_t queue_size = 10)
     {
-        clock_ = nh->get_clock();
-        imu_pub_ = nh->create_publisher<sensor_msgs::msg::Imu>(imu_topic, queue_size);
+        clock_ = node->get_clock();
+        imu_pub_ = node->create_publisher<sensor_msgs::msg::Imu>(imu_topic, queue_size);
     }
 
     void publish()
@@ -81,10 +81,10 @@ public:
 
     VelocityMarkers() {}
 
-    VelocityMarkers(rclcpp::Node::SharedPtr nh, const std::string& velocitymarkers_topic = "velocity_markers", uint32_t queue_size = 10)
+    VelocityMarkers(rclcpp::Node::SharedPtr node, const std::string& velocitymarkers_topic = "velocity_markers", uint32_t queue_size = 10)
     {
-        clock_ = nh->get_clock();
-        marker_pub_ = nh->create_publisher<visualization_msgs::msg::MarkerArray>(velocitymarkers_topic, queue_size);
+        clock_ = node->get_clock();
+        marker_pub_ = node->create_publisher<visualization_msgs::msg::MarkerArray>(velocitymarkers_topic, queue_size);
     }
 
     void publish()
@@ -159,10 +159,10 @@ public:
 
     PoseSourceOdom() {}
 
-    PoseSourceOdom(rclcpp::Node::SharedPtr nh, const std::string& pose_source_odom_topic = "pose_source/odom", uint32_t queue_size = 10)
+    PoseSourceOdom(rclcpp::Node::SharedPtr node, const std::string& pose_source_odom_topic = "pose_source/odom", uint32_t queue_size = 10)
     {
-        clock_ = nh->get_clock();
-        pose_source_odom_pub_ = nh->create_publisher<nav_msgs::msg::Odometry>(pose_source_odom_topic, queue_size);
+        clock_ = node->get_clock();
+        pose_source_odom_pub_ = node->create_publisher<nav_msgs::msg::Odometry>(pose_source_odom_topic, queue_size);
     }
 
     void publish()
@@ -185,22 +185,27 @@ class OdometryFusion
 public:
     using SharedPtr = std::shared_ptr<OdometryFusion>;
 
-    OdometryFusion(rclcpp::Node::SharedPtr nh,
+    OdometryFusion(rclcpp::Node::SharedPtr node,
                          const std::string& input_odom_topic  = "pose_source/odom",
                          const std::string& output_odom_frame = "pelvis",
                          uint32_t queue_size = 10)
-        : output_odom_frame_(output_odom_frame), last_tf_stamp_(0, 0, RCL_ROS_TIME), nh_(nh)
+        : output_odom_frame_(output_odom_frame), last_tf_stamp_(0, 0, RCL_ROS_TIME), node_(node)
     {
-        tf_buffer_ = std::make_unique<tf2_ros::Buffer>(nh->get_clock());
-        tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_, nh);
-        br_ = std::make_unique<tf2_ros::TransformBroadcaster>(nh);
+        odom_cb_group_ = node->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+        rclcpp::SubscriptionOptions sub_options;
+        sub_options.callback_group = odom_cb_group_;
 
-        odom_sub_ = nh->create_subscription<nav_msgs::msg::Odometry>(
+        tf_buffer_ = std::make_unique<tf2_ros::Buffer>(node->get_clock());
+        tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+        br_ = std::make_unique<tf2_ros::TransformBroadcaster>(node);
+
+        odom_sub_ = node->create_subscription<nav_msgs::msg::Odometry>(
             input_odom_topic,
             queue_size,
-            std::bind(&OdometryFusion::odomCallback, this, std::placeholders::_1));
+            std::bind(&OdometryFusion::odomCallback, this, std::placeholders::_1),
+            sub_options);
 
-        target_odom_pub_ = nh->create_publisher<nav_msgs::msg::Odometry>(output_odom_frame + "_odom", queue_size);
+        target_odom_pub_ = node->create_publisher<nav_msgs::msg::Odometry>(output_odom_frame + "_odom", queue_size);
         last_valid_ = false;
         last_stamp_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
     }
@@ -210,6 +215,7 @@ public:
 
 private:
     const std::string output_odom_frame_;
+    rclcpp::CallbackGroup::SharedPtr odom_cb_group_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr target_odom_pub_;
 
@@ -217,7 +223,7 @@ private:
     std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 
-    rclcpp::Node::SharedPtr nh_;
+    rclcpp::Node::SharedPtr node_;
 
     bool last_valid_;
     rclcpp::Time last_stamp_;
@@ -230,7 +236,7 @@ private:
         const std::string parent_frame = msg->header.frame_id;
         if (parent_frame != "odom")
         {
-            RCLCPP_ERROR_THROTTLE(nh_->get_logger(), *nh_->get_clock(), 1000,
+            RCLCPP_ERROR_THROTTLE(node_->get_logger(), *node_->get_clock(), 1000,
                 "Input odometry frame_id is not 'odom' (got '%s')",
                 parent_frame.c_str());
             return;
@@ -239,7 +245,7 @@ private:
         const std::string& source_link = msg->child_frame_id;
         if (source_link.empty())
         {
-            RCLCPP_WARN_THROTTLE(nh_->get_logger(), *nh_->get_clock(), 1000, "Incoming odometry has empty child_frame_id");
+            RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 1000, "Incoming odometry has empty child_frame_id");
             return;
         }
         tf2::Transform T_odom_target;
@@ -270,7 +276,7 @@ private:
                                         msg->header.stamp,
                                         rclcpp::Duration::from_seconds(0.1)))
             {
-                RCLCPP_WARN_THROTTLE(nh_->get_logger(), *nh_->get_clock(), 1000,
+                RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 1000,
                     "Waiting for TF %s -> %s",
                     output_odom_frame_.c_str(),
                     source_link.c_str());
@@ -286,7 +292,7 @@ private:
             }
             catch (const tf2::TransformException& ex)
             {
-                RCLCPP_WARN_THROTTLE(nh_->get_logger(), *nh_->get_clock(), 1000,
+                RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 1000,
                     "TF lookup failed (%s -> %s): %s",
                     output_odom_frame_.c_str(),
                     source_link.c_str(),
