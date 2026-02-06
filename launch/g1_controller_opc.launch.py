@@ -69,6 +69,6 @@ def generate_launch_description():
                     'rs_launch.py'
                 ])
             ]),
-            launch_arguments={'enable_pointcloud': 'true'}.items()
+            launch_arguments={'pointcloud.enable': 'true'}.items()
         )
     ])
