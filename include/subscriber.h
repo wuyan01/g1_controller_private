@@ -34,8 +34,11 @@ public:
 
     MotionCaptureState(rclcpp::Node::SharedPtr node, const std::string& mocap_topic = "/qualisys/base/odom")
     {
+        mocap_cb_group_ = node->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+        rclcpp::SubscriptionOptions sub_options;
+        sub_options.callback_group = mocap_cb_group_;
         mocap_sub_ = node->create_subscription<nav_msgs::msg::Odometry>(
-            mocap_topic, 10, std::bind(&MotionCaptureState::mocapCallback, this, std::placeholders::_1));
+            mocap_topic, 10, std::bind(&MotionCaptureState::mocapCallback, this, std::placeholders::_1), sub_options);
         msg_.pose.pose.orientation.w = 1.0;
     }
 
@@ -50,6 +53,7 @@ private:
     }
 
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr mocap_sub_;
+    rclcpp::CallbackGroup::SharedPtr mocap_cb_group_;
 };
 
 
