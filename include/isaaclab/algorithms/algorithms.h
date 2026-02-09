@@ -29,7 +29,7 @@ protected:
 class OrtRunner : public Algorithms
 {
 public:
-    OrtRunner(std::string model_path)
+    OrtRunner(std::string model_path, std::string precision="fp32")
     {
         // Init Model
         env = Ort::Env(ORT_LOGGING_LEVEL_WARNING, "onnx_model");
@@ -37,7 +37,7 @@ public:
         #if defined(__aarch64__)
             session = create_session_cpu(model_path);
         #else
-            session = create_session_tensorrt(model_path);
+            session = create_session_tensorrt(model_path, precision);
             if (!session) {
                 spdlog::warn("[ORT] Falling back to CUDA EP");
                 session = create_session_cuda(model_path);
@@ -104,16 +104,80 @@ public:
     }
 
 private:
+// Add these config entries for transformer models
+    void enable_transformer_optimizations(Ort::SessionOptions& so) {
+        // Attention mechanism optimizations
+        // so.AddConfigEntry("optimization.enable_gelu_approximation", "1");
+        so.AddConfigEntry("optimization.enable_layer_norm", "1");
+        so.AddConfigEntry("optimization.enable_attention", "1");
+        
+        // Memory optimization for attention layers
+        so.AddConfigEntry("optimization.enable_embed_layer_norm", "1");
+        so.AddConfigEntry("optimization.enable_skip_layer_norm", "1");
+        
+        // Kernel optimizations
+        so.AddConfigEntry("optimization.enable_bias_gelu", "1");
+        so.AddConfigEntry("optimization.enable_gelu", "1");
+
+        // Enable memory-efficient attention (similar to FlashAttention)
+        so.AddConfigEntry("optimization.enable_memory_efficient_attention", "1");
+        
+        // Enable cross attention optimizations (if your model uses it)
+        so.AddConfigEntry("optimization.enable_shape_optimization", "1");
+        
+        // Packed QKV optimization (fuses Q, K, V projections)
+        so.AddConfigEntry("optimization.enable_packed_qkv", "1");
+        
+        // Enable GPU attention optimizations (when using CUDA/TensorRT)
+        so.AddConfigEntry("optimization.enable_gpu_attention", "1");
+
+        // TensorRT specific fused multi-head attention
+        // so.AddConfigEntry("trt_fused_multihead_attention", "1");
+    }
     // ---- EP constructors ----
 
     // TensorRT via legacy C API (device_id only). Works with your headers.
-    std::unique_ptr<Ort::Session> create_session_tensorrt(const std::string& model_path) {
+    std::unique_ptr<Ort::Session> create_session_tensorrt(const std::string& model_path, const std::string& precision) {
         try {
             Ort::SessionOptions so;
-            so.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+            // so.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+
+            // Basic optimizations
+            so.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
+            so.SetIntraOpNumThreads(1);
+            so.SetInterOpNumThreads(1);
+            so.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
+            
+            // Transformer-specific optimizations
+            enable_transformer_optimizations(so);
+            
+            // Memory optimizations
+            so.AddConfigEntry("memory.optimize_memory", "1");
+            so.AddConfigEntry("enable_cpu_mem_arena", "1");
+
 
             // Use device 0; if you need to select another GPU, change this int.
             Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_Tensorrt(so, /*device_id*/ 0));
+
+            // Set precision and other options via config entries
+            if (precision == "fp16") {
+                so.AddConfigEntry("trt_fp16_enable", "1");
+                spdlog::info("[ORT] Using TensorRT EP with FP16 quantization");
+            } 
+            else if (precision == "int8") {
+                so.AddConfigEntry("trt_int8_enable", "1");
+                spdlog::info("[ORT] Using TensorRT EP with INT8 quantization");
+                // Note: For INT8, you may need to set the calibration table path as well.
+                // so.AddConfigEntry("trt_int8_calibration_table_name", "path_to_calibration_table");
+            }
+
+            // TensorRT attention-specific settings
+            so.AddConfigEntry("trt_timing_cache_enable", "1");
+            // so.AddConfigEntry("trt_context_memory_sharing_enable", "1");
+
+            so.AddConfigEntry("trt_max_workspace_size", "1073741824");
+            so.AddConfigEntry("trt_engine_cache_enable", "1");
+            so.AddConfigEntry("trt_engine_cache_path", "./trt_cache");
 
             auto sess = std::make_unique<Ort::Session>(env, model_path.c_str(), so);
             spdlog::info("[ORT] Using TensorRT EP");

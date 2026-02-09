@@ -47,6 +47,7 @@ endif()
 set(CUDA_LIB_HINTS
   /usr/local/cuda/lib64
   /usr/lib/x86_64-linux-gnu
+  /usr/local
   /usr/lib/aarch64-linux-gnu
 )
 
@@ -92,7 +93,9 @@ include_directories(
   /usr/local/include/ddscxx
   /usr/local/include/iceoryx/v2.0.2
   ${ORT_DIR}/include
+  ${PROJECT_SOURCE_DIR}/thirdparty/cnpy
 )
+set(CNPY_SRC ${PROJECT_SOURCE_DIR}/thirdparty/cnpy/cnpy.cpp)
 
 # ============================================================
 # Sources
@@ -107,6 +110,10 @@ list(FILTER ADD_SRC_LIST EXCLUDE REGEX ".*src/main.cpp$")
 # Library target
 # ============================================================
 add_library(${PROJECT_NAME}_lib ${ADD_SRC_LIST})
+add_library(cnpy ${CNPY_SRC})
+target_link_libraries(${PROJECT_NAME}_lib cnpy z)  # cnpy depends on zlib
+find_package(ZLIB REQUIRED)
+target_link_libraries(cnpy ZLIB::ZLIB)
 
 ament_target_dependencies(${PROJECT_NAME}_lib
   rclcpp

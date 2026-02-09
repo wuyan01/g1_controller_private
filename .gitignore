@@ -67,3 +67,6 @@ datasets
 *.mtl
 *.STL
 **/env.yaml
+
+# Third Party
+thirdparty/cnpy

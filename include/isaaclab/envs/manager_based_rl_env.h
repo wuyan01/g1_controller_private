@@ -11,6 +11,10 @@
 #include "isaaclab/algorithms/algorithms.h"
 #include <iostream>
 #include "isaaclab/utils/utils.h"
+#include "cnpy.h"
+#include <random>
+#include <algorithm>
+#include <fstream>
 
 namespace isaaclab
 {
@@ -30,6 +34,14 @@ public:
         robot->data.joint_ids_map = cfg["joint_ids_map"].as<std::vector<int>>();
         robot->data.joint_pos.resize(robot->data.joint_ids_map.size());
         robot->data.joint_vel.resize(robot->data.joint_ids_map.size());
+
+        if (cfg["text_embedding_dict_path"].IsDefined() && cfg["text_embedding_dict_path"].IsScalar()) {
+            std::filesystem::path text_embedding_dict_path = cfg["text_embedding_dict_path"].as<std::string>();
+            if (text_embedding_dict_path.is_relative()) {
+                text_embedding_dict_path = param::proj_dir / text_embedding_dict_path;
+            }
+            this->text_embedding_dict = cnpy::npz_load(text_embedding_dict_path);
+        }
 
         { // default joint positions
             auto default_joint_pos = cfg["default_joint_pos"].as<std::vector<float>>();
@@ -66,11 +78,20 @@ public:
 
     void step()
     {
-        episode_length += 1;
+        const int kActionRepeat = action.size() / robot->data.joint_pos.size();
+        const int action_idx = static_cast<int>(episode_length % kActionRepeat);
         robot->update();
         auto obs = observation_manager->compute();
-        auto action = alg->act(obs);
-        action_manager->process_action(action);
+
+        if (action_idx == 0) {
+            action = alg->act(obs);
+        }
+
+        const std::size_t start = robot->data.joint_pos.size() * static_cast<std::size_t>(action_idx);
+        std::vector<float> indexed_action(action.begin() + start,
+                                        action.begin() + start + robot->data.joint_pos.size());
+        action_manager->process_action(indexed_action);
+        episode_length += 1;
     }
 
     float step_dt;
@@ -83,6 +104,8 @@ public:
     std::unique_ptr<Algorithms> alg;
     long episode_length = 0;
     float global_phase = 0.0f;
+    cnpy::npz_t text_embedding_dict;
+    std::vector<float> action;
 };
 
 };

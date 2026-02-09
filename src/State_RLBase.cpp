@@ -50,7 +50,9 @@ State_RLBase::State_RLBase(int state_mode, std::string state_string)
         deploy_cfg,
         std::make_shared<unitree::G1Articulation<LowState_t::SharedPtr, OdometryFusion_t::SharedPtr, HeightMapHandler_t::SharedPtr>>(FSMState::lowstate, State_RLBase::torsoodometryfusion, State_RLBase::heightmaphandler)
     );
-    env->alg = std::make_unique<isaaclab::OrtRunner>(policy_dir / "exported" / "policy.onnx");
+    auto precision = env->cfg["policy_precision"].as<std::string>("fp32");
+    env->alg = std::make_unique<isaaclab::OrtRunner>(policy_dir / "exported" / "policy.onnx", precision);
+    env->action.resize(env->alg->action.size(), 0.0f);
 
     this->registered_checks.emplace_back(
         std::make_pair(

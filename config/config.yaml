@@ -7,6 +7,9 @@ FSM:
     Velocity:
       id: 3
       type: RLBase
+    Physhuman:
+      id: 4
+      type: RLBase
 
     Mimic_Dance_102: # uncomment to enable
       id: 101
@@ -37,6 +40,7 @@ FSM:
     transitions: 
       Passive: back.on_pressed
       Velocity: A.on_pressed
+      Physhuman: B.on_pressed
     kp: [
       100.0, 100.0, 100.0, 150.0, 40.0, 40.0, # left leg
       100.0, 100.0, 100.0, 150.0, 40.0, 40.0, # right leg
@@ -67,6 +71,11 @@ FSM:
       Mimic_Dance_102: LB(2s) + down.on_pressed
       Mimic_Gangnam_Style: LB(2s) + left.on_pressed
     policy_dir: config/policy/velocity
+
+  Physhuman:
+    transitions: 
+      Passive: back.on_pressed
+    policy_dir: config/policy/physhuman
 
   Mimic_Dance_102:
     transitions: 
