@@ -4,7 +4,7 @@ joint_ids_map: [0, 6, 12, 1, 7, 13, 2, 8, 14, 3, 9, 15, 22, 4, 10, 16, 23, 5, 11
   17, 24, 18, 25, 19, 26, 20, 27, 21, 28]
 # --------------------------------------------------
 policy_precision: "fp32"  # "int8" or "fp16" or "fp32" [only useful for tensorRT deployment]
-text_embedding_dict_path: "config/policy/velocity/params/text_embedding_dict.npz"
+text_embedding_dict_path: "config/policy/physhuman/params/text_embedding_dict.npz"
 
 step_dt: 0.02
 stiffness: [
