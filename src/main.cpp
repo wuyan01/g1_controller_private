@@ -22,7 +22,6 @@ std::shared_ptr<OdometryFusion_t> FSMState::pelvisodometryfusion = nullptr;
 std::shared_ptr<OdometryFusion_t> State_RLBase::torsoodometryfusion = nullptr;
 std::shared_ptr<HeightMap_t> State_RLBase::heightmap = nullptr;
 std::shared_ptr<HeightMapHandler_t> State_RLBase::heightmaphandler = nullptr;
-rclcpp::Node::SharedPtr State_RLBase::node_ = nullptr;
 std::string FSMState::network_interface = "lo";
 
 void init_fsm_state(rclcpp::Node::SharedPtr node)
@@ -50,7 +49,6 @@ void init_fsm_state(rclcpp::Node::SharedPtr node)
     State_RLBase::torsoodometryfusion = std::make_shared<OdometryFusion_t>(node, "pose_source/odom", "torso_link");
     State_RLBase::heightmap = std::make_shared<HeightMap_t>();
     State_RLBase::heightmaphandler = std::make_shared<HeightMapHandler_t>(node);
-    State_RLBase::node_ = node;
     spdlog::info("Waiting for connection to robot...");
     FSMState::lowstate->wait_for_connection();
     spdlog::info("Connected to robot.");

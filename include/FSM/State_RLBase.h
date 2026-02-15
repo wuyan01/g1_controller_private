@@ -6,7 +6,6 @@
 #include "FSMState.h"
 #include "isaaclab/envs/mdp/actions/joint_actions.h"
 #include "isaaclab/envs/mdp/terminations.h"
-#include <std_msgs/msg/string.hpp>
 
 class State_RLBase : public FSMState
 {
@@ -71,7 +70,6 @@ public:
     static std::shared_ptr<OdometryFusion_t> torsoodometryfusion;
     static std::shared_ptr<HeightMap_t> heightmap;
     static std::shared_ptr<HeightMapHandler_t> heightmaphandler;
-    static rclcpp::Node::SharedPtr node_;
 
 private:
     std::unique_ptr<isaaclab::ManagerBasedRLEnv> env;
@@ -80,10 +78,6 @@ private:
     bool policy_thread_running = false;
 
     bool measure_terrain_heights = false;
-
-    // ROS subscriber for real-time text commands
-    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr text_cmd_sub_;
-    rclcpp::CallbackGroup::SharedPtr text_cmd_cb_group_;
 
     void republish_velocitymarkers()
     {

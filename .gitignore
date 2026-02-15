@@ -57,6 +57,7 @@ _build
 
 # Pre-Trained Checkpoints
 /.pretrained_checkpoints/
+**/*.onnx
 
 # Teleop Recorded Dataset
 datasets
@@ -70,3 +71,4 @@ datasets
 
 # Third Party
 thirdparty/cnpy
+
