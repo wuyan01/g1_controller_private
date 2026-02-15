@@ -15,6 +15,7 @@
 #include <random>
 #include <algorithm>
 #include <fstream>
+#include <mutex>
 
 namespace isaaclab
 {
@@ -41,6 +42,19 @@ public:
                 text_embedding_dict_path = param::proj_dir / text_embedding_dict_path;
             }
             this->text_embedding_dict = cnpy::npz_load(text_embedding_dict_path);
+
+            // Log available text keys
+            spdlog::info("Available text commands:");
+            for (const auto& kv : this->text_embedding_dict) {
+                spdlog::info("  - '{}'", kv.first);
+            }
+        }
+
+        // Initialize current text key from config (fallback to empty string)
+        if (cfg["observations"]["text_embedding"].IsDefined() &&
+            cfg["observations"]["text_embedding"]["params"]["text_key"].IsDefined()) {
+            current_text_key_ = cfg["observations"]["text_embedding"]["params"]["text_key"].as<std::string>();
+            spdlog::info("Initial text command: '{}'", current_text_key_);
         }
 
         { // default joint positions
@@ -94,6 +108,22 @@ public:
         episode_length += 1;
     }
 
+    // Thread-safe text key management for real-time text command updates
+    void set_text_key(const std::string& key) {
+        std::lock_guard<std::mutex> lock(text_key_mutex_);
+        if (text_embedding_dict.count(key)) {
+            current_text_key_ = key;
+            spdlog::info("Text command updated: '{}'", key);
+        } else {
+            spdlog::warn("Text key '{}' not found in embedding dictionary. Ignoring.", key);
+        }
+    }
+
+    std::string get_text_key() const {
+        std::lock_guard<std::mutex> lock(text_key_mutex_);
+        return current_text_key_;
+    }
+
     float step_dt;
     
     YAML::Node cfg;
@@ -106,6 +136,10 @@ public:
     float global_phase = 0.0f;
     cnpy::npz_t text_embedding_dict;
     std::vector<float> action;
+
+private:
+    std::string current_text_key_;
+    mutable std::mutex text_key_mutex_;
 };
 
 };

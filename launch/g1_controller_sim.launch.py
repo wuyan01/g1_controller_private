@@ -52,15 +52,15 @@ def generate_launch_description():
             ])
         ),
 
-        Node(
-            package='rviz2',
-            executable='rviz2',
-            name='rviz2',
-            arguments=['-d', PathJoinSubstitution([
-                FindPackageShare('g1_controller'),
-                'config',
-                'rviz',
-                'config.rviz'
-            ])]
-        )
+        # Node(
+        #     package='rviz2',
+        #     executable='rviz2',
+        #     name='rviz2',
+        #     arguments=['-d', PathJoinSubstitution([
+        #         FindPackageShare('g1_controller'),
+        #         'config',
+        #         'rviz',
+        #         'config.rviz'
+        #     ])]
+        # )
     ])

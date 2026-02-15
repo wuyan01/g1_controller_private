@@ -60,6 +60,21 @@ State_RLBase::State_RLBase(int state_mode, std::string state_string)
             FSMStringMap.right.at("Passive")
         )
     );
+
+    // Create ROS subscriber for real-time text commands
+    if (node_ && env->text_embedding_dict.size() > 0) {
+        text_cmd_cb_group_ = node_->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+        rclcpp::SubscriptionOptions sub_options;
+        sub_options.callback_group = text_cmd_cb_group_;
+        text_cmd_sub_ = node_->create_subscription<std_msgs::msg::String>(
+            "/text_command", 10,
+            [this](const std_msgs::msg::String::SharedPtr msg) {
+                env->set_text_key(msg->data);
+            },
+            sub_options
+        );
+        spdlog::info("Subscribed to /text_command for real-time text input.");
+    }
 }
 
 void State_RLBase::run()
