@@ -67,36 +67,36 @@ observations:
     params: {}
     clip: null
     scale: [1.0, 1.0, 1.0]
-    history_length: 8
+    history_length: 4
   base_ang_vel:
     params: {}
     clip: null
     scale: [0.2, 0.2, 0.2]
-    history_length: 8
+    history_length: 4
   projected_gravity:
     params: {}
     clip: null
     scale: [1.0, 1.0, 1.0]
-    history_length: 8
+    history_length: 4
   joint_pos_rel:
     params: {}
     clip: null
     scale: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
       1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-    history_length: 8
+    history_length: 4
   joint_vel_rel:
     params: {}
     clip: null
     scale: [0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
       0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
       0.05, 0.05, 0.05, 0.05]
-    history_length: 8
+    history_length: 4
   last_action:
     params: {}
     clip: null
     scale: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
       1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-    history_length: 8
+    history_length: 4
   noise:
     params: {"state_dim": 96, "seed": 42, "num_future_steps": 1, "clip_noise": 1.0}
     clip: null
@@ -110,7 +110,7 @@ observations:
       1.0, 1.0, 1.0]
     history_length: 1
   text_embedding:
-    params: {text_key: "squat"}
+    params: {text_key: "jog in place"}
     clip: null
     scale: [
       1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,

@@ -57,7 +57,7 @@ _build
 
 # Pre-Trained Checkpoints
 /.pretrained_checkpoints/
-**/*.onnx
+**/physhuman/exported/*.onnx
 
 # Teleop Recorded Dataset
 datasets

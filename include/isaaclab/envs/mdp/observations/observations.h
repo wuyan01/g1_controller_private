@@ -178,8 +178,8 @@ REGISTER_OBSERVATION(noise)
 
 REGISTER_OBSERVATION(text_embedding)
 {
-    auto cfg = env->cfg["observations"]["text_embedding"];
-    cnpy::NpyArray arr = env->text_embedding_dict[cfg["params"]["text_key"].as<std::string>()];
+    std::string key = env->get_text_key();
+    cnpy::NpyArray arr = env->text_embedding_dict[key];
     const float* raw = arr.data<float>();
     std::vector<float> data(raw, raw + arr.num_vals);
     return data;
