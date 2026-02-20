@@ -7,6 +7,15 @@ policy_precision: "fp32"  # "int8" or "fp16" or "fp32" [only useful for tensorRT
 text_embedding_dict_path: "config/policy/physhuman/params/text_embedding_dict.npz"
 
 step_dt: 0.02
+action_monitor:
+  decimation: 1
+  csv_log:
+    enabled: true
+    path: "log/policy_actions.csv"
+  topic_pub:
+    enabled: true
+    topic: "/policy_action"
+    queue_size: 10
 stiffness: [
   40.17923847137318, 99.09842777666113, 40.17923847137318, 99.09842777666113, 28.50124619574858, 28.50124619574858, # left leg
   40.17923847137318, 99.09842777666113, 40.17923847137318, 99.09842777666113, 28.50124619574858, 28.50124619574858, # right leg
@@ -110,7 +119,7 @@ observations:
       1.0, 1.0, 1.0]
     history_length: 1
   text_embedding:
-    params: {text_key: "jog in place"}
+    params: {text_key: "wave one arm"}
     clip: null
     scale: [
       1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,

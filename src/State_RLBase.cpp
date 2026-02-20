@@ -3,6 +3,8 @@
 #include "isaaclab/envs/mdp/observations/observations.h"
 #include "isaaclab/envs/mdp/actions/joint_actions.h"
 #include <unordered_map>
+#include <algorithm>
+#include <iomanip>
 #include <ament_index_cpp/get_package_share_directory.hpp>
 
 namespace isaaclab
@@ -75,12 +77,73 @@ State_RLBase::State_RLBase(int state_mode, std::string state_string)
         );
         spdlog::info("Subscribed to /text_command for real-time text input.");
     }
+
+    if (deploy_cfg["action_monitor"].IsDefined()) {
+        const auto action_monitor_cfg = deploy_cfg["action_monitor"];
+        action_csv_log_enabled_ = action_monitor_cfg["csv_log"]["enabled"].as<bool>(false);
+        action_topic_pub_enabled_ = action_monitor_cfg["topic_pub"]["enabled"].as<bool>(false);
+        action_monitor_decimation_ = std::max<std::size_t>(1, action_monitor_cfg["decimation"].as<std::size_t>(1));
+
+        if (action_csv_log_enabled_) {
+            std::filesystem::path csv_path =
+                action_monitor_cfg["csv_log"]["path"].as<std::string>("log/policy_actions.csv");
+            if (csv_path.is_relative()) {
+                csv_path = std::filesystem::current_path() / csv_path;
+            }
+            std::filesystem::create_directories(csv_path.parent_path());
+            action_csv_stream_.open(csv_path, std::ios::out | std::ios::trunc);
+            if (!action_csv_stream_.is_open()) {
+                spdlog::warn("Failed to open action CSV log path: {}", csv_path.string());
+                action_csv_log_enabled_ = false;
+            } else {
+                action_csv_stream_ << "stamp_sec";
+                auto action_dim = env->robot->data.joint_ids_map.size();
+                for (std::size_t i = 0; i < action_dim; ++i) {
+                    action_csv_stream_ << ",action_" << i;
+                }
+                action_csv_stream_ << '\n';
+                action_csv_stream_ << std::fixed << std::setprecision(6);
+                spdlog::info("Action CSV logging enabled: {}", csv_path.string());
+            }
+        }
+
+        if (action_topic_pub_enabled_ && node_) {
+            const auto topic_name = action_monitor_cfg["topic_pub"]["topic"].as<std::string>("/policy_action");
+            const auto queue_size = action_monitor_cfg["topic_pub"]["queue_size"].as<int>(10);
+            action_pub_ = node_->create_publisher<std_msgs::msg::Float32MultiArray>(topic_name, queue_size);
+            spdlog::info("Action topic publishing enabled: {}", topic_name);
+        }
+    }
 }
 
 void State_RLBase::run()
 {
     auto action = env->action_manager->processed_actions();
+    monitor_action(action);
     for(int i(0); i < env->robot->data.joint_ids_map.size(); i++) {
         lowcmd->msg_.motor_cmd()[env->robot->data.joint_ids_map[i]].q() = action[i];
+    }
+}
+
+void State_RLBase::monitor_action(const std::vector<float>& action)
+{
+    action_monitor_counter_++;
+    if (action_monitor_counter_ % action_monitor_decimation_ != 0) {
+        return;
+    }
+
+    if (action_csv_log_enabled_ && action_csv_stream_.is_open() && node_) {
+        const double stamp_sec = node_->now().seconds();
+        action_csv_stream_ << stamp_sec;
+        for (const auto value : action) {
+            action_csv_stream_ << ',' << value;
+        }
+        action_csv_stream_ << '\n';
+    }
+
+    if (action_topic_pub_enabled_ && action_pub_ && node_) {
+        std_msgs::msg::Float32MultiArray msg;
+        msg.data = action;
+        action_pub_->publish(msg);
     }
 }

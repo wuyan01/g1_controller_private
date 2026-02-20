@@ -7,6 +7,9 @@
 #include "isaaclab/envs/mdp/actions/joint_actions.h"
 #include "isaaclab/envs/mdp/terminations.h"
 #include <std_msgs/msg/string.hpp>
+#include <std_msgs/msg/float32_multi_array.hpp>
+#include <fstream>
+#include <filesystem>
 
 class State_RLBase : public FSMState
 {
@@ -58,6 +61,10 @@ public:
         if (policy_thread.joinable()) {
             policy_thread.join();
         }
+        if (action_csv_stream_.is_open()) {
+            action_csv_stream_.flush();
+            action_csv_stream_.close();
+        }
     }
 
     void pre_run()
@@ -84,6 +91,16 @@ private:
     // ROS subscriber for real-time text commands
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr text_cmd_sub_;
     rclcpp::CallbackGroup::SharedPtr text_cmd_cb_group_;
+
+    // Action monitor (offline CSV + online ROS topic)
+    bool action_csv_log_enabled_ = false;
+    bool action_topic_pub_enabled_ = false;
+    std::size_t action_monitor_decimation_ = 1;
+    std::size_t action_monitor_counter_ = 0;
+    std::ofstream action_csv_stream_;
+    rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr action_pub_;
+
+    void monitor_action(const std::vector<float>& action);
 
     void republish_velocitymarkers()
     {
