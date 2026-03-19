@@ -53,7 +53,14 @@ State_RLBase::State_RLBase(int state_mode, std::string state_string)
         std::make_shared<unitree::G1Articulation<LowState_t::SharedPtr, OdometryFusion_t::SharedPtr, HeightMapHandler_t::SharedPtr>>(FSMState::lowstate, State_RLBase::torsoodometryfusion, State_RLBase::heightmaphandler)
     );
     auto precision = env->cfg["policy_precision"].as<std::string>("fp32");
-    env->alg = std::make_unique<isaaclab::OrtRunner>(policy_dir / "exported" / "policy.onnx", precision);
+    const auto policy_runner = env->cfg["policy_runner"].as<std::string>("onnx");
+    const auto policy_file = env->cfg["policy_file"].as<std::string>("policy.onnx");
+    const auto policy_path = policy_dir / "exported" / policy_file;
+    if (policy_runner == "onnx_stateful") {
+        env->alg = std::make_unique<isaaclab::StatefulOrtRunner>(policy_path, deploy_cfg, precision);
+    } else {
+        env->alg = std::make_unique<isaaclab::OrtRunner>(policy_path, precision);
+    }
     env->action.resize(env->alg->action.size(), 0.0f);
 
     this->registered_checks.emplace_back(
@@ -145,5 +152,16 @@ void State_RLBase::monitor_action(const std::vector<float>& action)
         std_msgs::msg::Float32MultiArray msg;
         msg.data = action;
         action_pub_->publish(msg);
+    }
+}
+
+void State_RLBase::handle_text_commands()
+{
+    if (getStateString() != "Physhuman") {
+        return;
+    }
+
+    if (FSMState::lowstate && FSMState::lowstate->joystick.Y.on_pressed) {
+        env->set_text_key("stand");
     }
 }

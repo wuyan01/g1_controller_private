@@ -152,28 +152,7 @@ REGISTER_OBSERVATION(height_map)
 
 REGISTER_OBSERVATION(noise)
 {
-    auto cfg = env->cfg["observations"]["noise"];
-
-    // Determine noise dimensionality
-    const int num_future = cfg["params"]["num_future_steps"].as<int>();  // ignore, always 1
-    const int state_dim = cfg["params"]["state_dim"].as<int>();    // e.g., 96 (with linvel) / 93 (wo linvel)
-    const int noise_dim = num_future * state_dim;
-
-    // Optional: seed for reproducibility
-    unsigned int seed = cfg["params"]["seed"].as<unsigned int>(42);
-    std::mt19937 gen(seed);
-    std::normal_distribution<float> dist(0.0f, 1.0f);  // standard Gaussian N(0,1)
-
-    std::vector<float> noise(noise_dim);
-    for (auto& v : noise)
-        v = dist(gen);
-
-    // Optional: clamp noise if needed (to match your PyTorch code)
-    float clip_noise = cfg["params"]["clip_noise"].as<float>(1.0f);
-    for (auto& v : noise)
-        v = std::max(-clip_noise, std::min(clip_noise, v));
-
-    return noise;
+    return env->get_noise_observation();
 }
 
 REGISTER_OBSERVATION(text_embedding)

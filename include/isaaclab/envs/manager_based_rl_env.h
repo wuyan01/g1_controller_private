@@ -79,6 +79,24 @@ public:
             spdlog::warn("Observation base_lin_vel is used.");
             spdlog::warn("Please ensure the motion capture system is set correctly.");
         }
+
+        if (cfg["observations"]["noise"].IsDefined()) {
+            const auto noise_cfg = cfg["observations"]["noise"];
+            const auto noise_params = noise_cfg["params"];
+            noise_mode_ = noise_params["mode"].as<std::string>("gaussian");
+
+            const unsigned int seed = noise_params["seed"].as<unsigned int>(42);
+            noise_gen_.seed(seed);
+
+            if (noise_mode_ == "fixed") {
+                fixed_noise_ = generate_noise_observation();
+            } else if (noise_mode_ != "gaussian" && noise_mode_ != "zero") {
+                spdlog::warn("Unknown noise mode '{}', falling back to gaussian.", noise_mode_);
+                noise_mode_ = "gaussian";
+            }
+
+            spdlog::info("Noise observation mode: {}", noise_mode_);
+        }
     }
 
     void reset()
@@ -124,6 +142,35 @@ public:
         return current_text_key_;
     }
 
+    std::vector<float> generate_noise_observation()
+    {
+        const auto noise_cfg = cfg["observations"]["noise"];
+        const auto noise_params = noise_cfg["params"];
+        const int num_future = noise_params["num_future_steps"].as<int>(1);
+        const int state_dim = noise_params["state_dim"].as<int>();
+        const int noise_dim = num_future * state_dim;
+        const float clip_noise = noise_params["clip_noise"].as<float>(1.0f);
+
+        std::vector<float> noise(noise_dim, 0.0f);
+        if (noise_mode_ == "zero") {
+            return noise;
+        }
+
+        for (auto& v : noise) {
+            v = noise_dist_(noise_gen_);
+            v = std::max(-clip_noise, std::min(clip_noise, v));
+        }
+        return noise;
+    }
+
+    std::vector<float> get_noise_observation()
+    {
+        if (noise_mode_ == "fixed") {
+            return fixed_noise_;
+        }
+        return generate_noise_observation();
+    }
+
     float step_dt;
     
     YAML::Node cfg;
@@ -140,6 +187,10 @@ public:
 private:
     std::string current_text_key_;
     mutable std::mutex text_key_mutex_;
+    std::string noise_mode_ = "gaussian";
+    std::mt19937 noise_gen_{42};
+    std::normal_distribution<float> noise_dist_{0.0f, 1.0f};
+    std::vector<float> fixed_noise_;
 };
 
 };

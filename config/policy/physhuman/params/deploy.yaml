@@ -4,7 +4,27 @@ joint_ids_map: [0, 6, 12, 1, 7, 13, 2, 8, 14, 3, 9, 15, 22, 4, 10, 16, 23, 5, 11
   17, 24, 18, 25, 19, 26, 20, 27, 21, 28]
 # --------------------------------------------------
 policy_precision: "fp32"  # "int8" or "fp16" or "fp32" [only useful for tensorRT deployment]
+policy_runner: "onnx"  # "onnx" or "onnx_stateful"
+policy_file: "policy.onnx"
 text_embedding_dict_path: "config/policy/physhuman/params/text_embedding_dict.npz"
+
+soft_gate:
+  enabled: false
+  active_signals: ["projected_gravity", "root_velocity"]
+  threshold: 0.2
+  sharpness: 10.0
+  gate_floor: 0.2
+  initial_gate: 0.2
+  ema_enabled: true
+  ema_alpha: 0.9
+  ema_target: "risk"
+  projected_gravity_weight: 3.0
+  root_velocity_weight: 0.0
+
+stateful_debug:
+  enabled: true
+  interval: 20
+  preview_dims: 3
 
 step_dt: 0.02
 action_monitor:
@@ -107,7 +127,11 @@ observations:
       1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
     history_length: 4
   noise:
-    params: {"state_dim": 96, "seed": 42, "num_future_steps": 1, "clip_noise": 1.0}
+    # mode:
+    #   gaussian: sample fresh clipped Gaussian noise every control step
+    #   zero: always feed zeros to the policy
+    #   fixed: sample once at startup and reuse the same vector forever
+    params: {"state_dim": 96, "seed": 42, "num_future_steps": 1, "clip_noise": 1.0, "mode": "gaussian"}
     clip: null
     scale: [
       1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 
@@ -119,7 +143,7 @@ observations:
       1.0, 1.0, 1.0]
     history_length: 1
   text_embedding:
-    params: {text_key: "wave one arm"}
+    params: {text_key: "tpose"}
     clip: null
     scale: [
       1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,

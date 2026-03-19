@@ -70,6 +70,7 @@ public:
     void pre_run()
     {
         FSMState::pre_run();
+        handle_text_commands();
         republish_velocitymarkers();
         simulate_heights();
     }
@@ -101,6 +102,7 @@ private:
     rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr action_pub_;
 
     void monitor_action(const std::vector<float>& action);
+    void handle_text_commands();
 
     void republish_velocitymarkers()
     {

@@ -72,6 +72,11 @@ Check out our Python implementation of the G1 robot deployment:
 
 - [g1_rsl_python](https://github.com/leggedrobotics/g1_rsl_python): Python implementation of the G1 robot deployment.
 
+## Change text command
+ros2 topic pub /text_command std_msgs/msg/String "data: 'stand'" --once
+
+In the `Physhuman` experiment, after switching into it with joystick `B`, you can also press joystick `Y` to directly change the text command to `stand`.
+
 
 ## Citation
 If you find this repository useful for your research, please consider citing:
