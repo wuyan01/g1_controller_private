@@ -47,6 +47,17 @@ State_RLBase::State_RLBase(int state_mode, std::string state_string)
     if (measure_terrain_heights) {
         heightmaphandler->init(deploy_cfg["height_map"]);
     }
+    if (deploy_cfg["policy_delay_debug"].IsDefined()) {
+        const auto policy_delay_debug_cfg = deploy_cfg["policy_delay_debug"];
+        policy_delay_debug_enabled_ = policy_delay_debug_cfg["enabled"].as<bool>(false);
+        policy_delay_debug_interval_ =
+            std::max<std::size_t>(1, policy_delay_debug_cfg["interval"].as<std::size_t>(1));
+        policy_delay_debug_warn_ms_ = policy_delay_debug_cfg["warn_ms"].as<double>(0.0);
+        if (policy_delay_debug_enabled_) {
+            spdlog::info("Policy delay debug enabled: interval={}, warn_ms={:.3f}",
+                         policy_delay_debug_interval_, policy_delay_debug_warn_ms_);
+        }
+    }
 
     env = std::make_unique<isaaclab::ManagerBasedRLEnv>(
         deploy_cfg,
@@ -125,11 +136,47 @@ State_RLBase::State_RLBase(int state_mode, std::string state_string)
 
 void State_RLBase::run()
 {
-    auto action = env->action_manager->processed_actions();
+    std::vector<float> action;
+    State_RLBase::steady_clock::time_point action_time;
+    std::size_t action_seq = 0;
+    if (!consume_latest_action_snapshot(action, action_time, action_seq)) {
+        return;
+    }
+
+    if (action_seq == last_applied_action_seq_) {
+        return;
+    }
+
+    last_applied_action_seq_ = action_seq;
+    gauge_control_frequency(action_time);
     monitor_action(action);
     for(int i(0); i < env->robot->data.joint_ids_map.size(); i++) {
         lowcmd->msg_.motor_cmd()[env->robot->data.joint_ids_map[i]].q() = action[i];
     }
+}
+
+void State_RLBase::publish_latest_action_snapshot(const std::vector<float>& action,
+                                                  const State_RLBase::steady_clock::time_point& update_time)
+{
+    std::lock_guard<std::mutex> lock(action_update_mutex_);
+    latest_action_ = action;
+    latest_action_update_time_ = update_time;
+    ++action_update_seq_;
+}
+
+bool State_RLBase::consume_latest_action_snapshot(std::vector<float>& action,
+                                                  State_RLBase::steady_clock::time_point& update_time,
+                                                  std::size_t& action_seq)
+{
+    std::lock_guard<std::mutex> lock(action_update_mutex_);
+    if (latest_action_.empty()) {
+        return false;
+    }
+
+    action = latest_action_;
+    update_time = latest_action_update_time_;
+    action_seq = action_update_seq_;
+    return true;
 }
 
 void State_RLBase::monitor_action(const std::vector<float>& action)

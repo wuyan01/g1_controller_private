@@ -12,9 +12,12 @@ namespace mdp
 
 REGISTER_OBSERVATION(base_lin_vel)
 {
-    auto & asset = env->robot;
-    auto & data = asset->data.root_lin_vel_b;
-    return std::vector<float>(data.data(), data.data() + data.size());
+    // auto & asset = env->robot;
+    // auto & data = asset->data.root_lin_vel_b;
+
+    // return std::vector<float>(data.data(), data.data() + data.size());
+
+    return std::vector<float>(3, 0.0f);
 }
 
 REGISTER_OBSERVATION(base_ang_vel)

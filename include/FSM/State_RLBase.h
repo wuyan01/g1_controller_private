@@ -8,12 +8,17 @@
 #include "isaaclab/envs/mdp/terminations.h"
 #include <std_msgs/msg/string.hpp>
 #include <std_msgs/msg/float32_multi_array.hpp>
+#include <algorithm>
+#include <chrono>
 #include <fstream>
 #include <filesystem>
+#include <mutex>
 
 class State_RLBase : public FSMState
 {
 public:
+    using steady_clock = std::chrono::steady_clock;
+
     State_RLBase(int state_mode, std::string state_string);
     
     void enter()
@@ -28,12 +33,19 @@ public:
         }
 
         env->robot->update();
+        action_update_seq_ = 0;
+        last_applied_action_seq_ = 0;
+        latest_action_.assign(env->robot->data.joint_ids_map.size(), 0.0f);
+        control_freq_sample_count_ = 0;
+        control_freq_window_start_ = steady_clock::time_point{};
+
         // Start policy thread
         policy_thread_running = true;
         policy_thread = std::thread([this]{
             using clock = std::chrono::high_resolution_clock;
             const std::chrono::duration<double> desiredDuration(env->step_dt);
             const auto dt = std::chrono::duration_cast<clock::duration>(desiredDuration);
+            const auto dt_ms = std::chrono::duration<double, std::milli>(dt).count();
 
             // Initialize timing
             auto sleepTill = clock::now() + dt;
@@ -41,7 +53,33 @@ public:
 
             while (policy_thread_running)
             {
+                const auto step_start = clock::now();
                 env->step();
+                const auto action_update_time = steady_clock::now();
+                publish_latest_action_snapshot(
+                    env->action_manager->processed_actions(),
+                    action_update_time
+                );
+                const auto step_end = clock::now();
+
+                if (policy_delay_debug_enabled_) {
+                    policy_delay_debug_counter_++;
+                    const auto step_ms = std::chrono::duration<double, std::milli>(step_end - step_start).count();
+                    const auto overrun_ms = std::max(0.0, step_ms - dt_ms);
+                    const bool should_log_interval =
+                        (policy_delay_debug_counter_ % policy_delay_debug_interval_) == 0;
+                    const bool should_log_overrun =
+                        policy_delay_debug_warn_ms_ > 0.0 && step_ms >= policy_delay_debug_warn_ms_;
+                    if (should_log_interval || should_log_overrun) {
+                        spdlog::info(
+                            "[PolicyDelay] step={} policy_step_ms={:.3f} budget_ms={:.3f} overrun_ms={:.3f}",
+                            policy_delay_debug_counter_,
+                            step_ms,
+                            dt_ms,
+                            overrun_ms
+                        );
+                    }
+                }
 
                 // Sleep
                 std::this_thread::sleep_until(sleepTill);
@@ -101,8 +139,54 @@ private:
     std::ofstream action_csv_stream_;
     rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr action_pub_;
 
+    bool policy_delay_debug_enabled_ = false;
+    std::size_t policy_delay_debug_interval_ = 1;
+    double policy_delay_debug_warn_ms_ = 0.0;
+    std::size_t policy_delay_debug_counter_ = 0;
+    mutable std::mutex action_update_mutex_;
+    std::vector<float> latest_action_;
+    steady_clock::time_point latest_action_update_time_{};
+    std::size_t action_update_seq_ = 0;
+    std::size_t last_applied_action_seq_ = 0;
+    std::size_t control_freq_sample_count_ = 0;
+    steady_clock::time_point control_freq_window_start_{};
+
     void monitor_action(const std::vector<float>& action);
+    void publish_latest_action_snapshot(const std::vector<float>& action,
+                                        const steady_clock::time_point& update_time);
+    bool consume_latest_action_snapshot(std::vector<float>& action,
+                                        steady_clock::time_point& update_time,
+                                        std::size_t& action_seq);
     void handle_text_commands();
+    void gauge_control_frequency(const steady_clock::time_point& action_time)
+    {
+        if (control_freq_sample_count_ == 0) {
+            control_freq_window_start_ = action_time;
+            control_freq_sample_count_ = 1;
+            return;
+        }
+
+        control_freq_sample_count_++;
+        constexpr std::size_t kLogSamples = 10;
+        if (control_freq_sample_count_ < kLogSamples) {
+            return;
+        }
+
+        const auto elapsed_s =
+            std::chrono::duration<double>(action_time - control_freq_window_start_).count();
+        if (elapsed_s > 0.0) {
+            const double hz = static_cast<double>(control_freq_sample_count_ - 1) / elapsed_s;
+            spdlog::info(
+                "[ControlFreq] state={} target_action_hz={:.2f} measured_action_hz={:.2f}",
+                getStateString(),
+                1.0 / static_cast<double>(env->step_dt),
+                hz
+            );
+        }
+
+        control_freq_window_start_ = action_time;
+        control_freq_sample_count_ = 1;
+    }
 
     void republish_velocitymarkers()
     {
