@@ -58,6 +58,8 @@ _build
 # Pre-Trained Checkpoints
 /.pretrained_checkpoints/
 **/physhuman/exported/*.onnx
+**/physhuman_steer/exported/*.onnx
+**/physhuman_steer/params/text_embedding_dict.npz
 
 # Teleop Recorded Dataset
 datasets
@@ -71,4 +73,6 @@ datasets
 
 # Third Party
 thirdparty/cnpy
+
+.codex
 

@@ -42,12 +42,6 @@ public:
                 text_embedding_dict_path = param::proj_dir / text_embedding_dict_path;
             }
             this->text_embedding_dict = cnpy::npz_load(text_embedding_dict_path);
-
-            // Log available text keys
-            spdlog::info("Available text commands:");
-            for (const auto& kv : this->text_embedding_dict) {
-                spdlog::info("  - '{}'", kv.first);
-            }
         }
 
         // Initialize current text key from config (fallback to empty string)

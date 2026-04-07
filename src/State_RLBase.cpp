@@ -204,11 +204,12 @@ void State_RLBase::monitor_action(const std::vector<float>& action)
 
 void State_RLBase::handle_text_commands()
 {
-    if (getStateString() != "Physhuman") {
+    const auto state = getStateString();
+    if (state != "Physhuman" && state != "Physhuman_Steer") {
         return;
     }
 
     if (FSMState::lowstate && FSMState::lowstate->joystick.Y.on_pressed) {
-        env->set_text_key("stand");
+        env->set_text_key("apose");
     }
 }
