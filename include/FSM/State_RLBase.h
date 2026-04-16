@@ -39,6 +39,14 @@ public:
         control_freq_sample_count_ = 0;
         control_freq_window_start_ = steady_clock::time_point{};
 
+        if (getStateString() == "Physhuman" &&
+            FSMState::lowstate &&
+            FSMState::lowstate->joystick.LB.pressed &&
+            FSMState::lowstate->joystick.LB.pressed_time >= 2.0f &&
+            FSMState::lowstate->joystick.B.on_pressed) {
+            env->set_text_key("apose");
+        }
+
         // Start policy thread
         policy_thread_running = true;
         policy_thread = std::thread([this]{
