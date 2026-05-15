@@ -138,7 +138,7 @@ observations:
       1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
     history_length: 5
   text_embedding:
-    params: {text_key: "walk"}
+    params: {text_key: "apose"}
     clip: null
     scale: [
       1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,

@@ -134,6 +134,26 @@ REGISTER_OBSERVATION(velocity_commands)
     return obs;
 }
 
+REGISTER_OBSERVATION(goal_command)
+{
+    auto & asset = env->robot;
+    const Eigen::Vector3f goal_w = env->get_goal_position();
+    const Eigen::Vector3f delta_w = goal_w - asset->data.root_pos_w;
+    const Eigen::Quaternionf q = asset->data.root_quat_w.normalized();
+    const float yaw = std::atan2(
+        2.0f * (q.w() * q.z() + q.x() * q.y()),
+        1.0f - 2.0f * (q.y() * q.y() + q.z() * q.z())
+    );
+    const float c = std::cos(yaw);
+    const float s = std::sin(yaw);
+    const float scale = params["scale"].as<float>(1.0f);
+
+    return std::vector<float>{
+        scale * (c * delta_w.x() + s * delta_w.y()),
+        scale * (-s * delta_w.x() + c * delta_w.y())
+    };
+}
+
 REGISTER_OBSERVATION(gait_phase)
 {
     float period = params["period"].as<float>();

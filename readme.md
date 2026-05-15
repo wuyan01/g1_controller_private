@@ -77,6 +77,38 @@ ros2 topic pub /text_command std_msgs/msg/String "data: 'stand'" --once
 
 In the `Physhuman` experiment, after switching into it with joystick `B`, you can also press joystick `Y` to directly change the text command to `stand`.
 
+## Physhuman Goal Reaching
+
+The `Physhuman_goal` experiment is entered with joystick `LB` held for 2 seconds plus `Y`. It listens to RViz goal messages on `/goal_pose` (`geometry_msgs/msg/PoseStamped`) and feeds the policy the planar goal offset in the robot yaw-aligned body frame. Every time the state is entered, any previous external goal is cleared and the stored goal is reset to odom XY `(0, 0)` until a fresh goal arrives.
+
+To visualize the selected goal in RViz, add a `Marker` display with topic `/goal_marker`. The RViz goal tool arrow is only the one-shot input command, so it can disappear after publishing; `/goal_marker` is the persistent controller marker.
+
+You can also publish a goal directly from the terminal:
+
+```bash
+ros2 topic pub /goal_pose geometry_msgs/msg/PoseStamped "{
+  header: {frame_id: 'odom'},
+  pose: {
+    position: {x: 1.5, y: 0.0, z: 0.76},
+    orientation: {w: 1.0}
+  }
+}" --once
+```
+
+The controller logs planar distance to the goal while `Physhuman_goal` is active. It starts with the idle text command `stand`; when a real `/goal_pose` arrives, it switches to the configured active command such as `walk`. Once the distance stays below the configured threshold, it changes back to `stand` so the policy can stop. The defaults live in `config/policy/physhuman_goal/params/deploy.yaml` under `goal_monitor`.
+
+Text commands for this mode still use:
+
+```bash
+ros2 topic pub /text_command std_msgs/msg/String "data: 'walk'" --once
+```
+
+In `Physhuman_goal`, publishing a non-idle text command also updates the active motion style for the current goal, or queues it for the next goal if the robot is currently idle:
+
+```bash
+ros2 topic pub /text_command std_msgs/msg/String "data: 'jog'" --once
+```
+
 
 ## Citation
 If you find this repository useful for your research, please consider citing:

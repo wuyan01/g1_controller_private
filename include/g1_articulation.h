@@ -42,6 +42,16 @@ public:
             torsoodometryfusion->msg_.pose.pose.orientation.y,
             torsoodometryfusion->msg_.pose.pose.orientation.z
         );
+        Base::data.root_pos_w <<
+            static_cast<float>(torsoodometryfusion->msg_.pose.pose.position.x),
+            static_cast<float>(torsoodometryfusion->msg_.pose.pose.position.y),
+            static_cast<float>(torsoodometryfusion->msg_.pose.pose.position.z);
+        Base::data.root_quat_w = Eigen::Quaternionf(
+            static_cast<float>(torsoodometryfusion->msg_.pose.pose.orientation.w),
+            static_cast<float>(torsoodometryfusion->msg_.pose.pose.orientation.x),
+            static_cast<float>(torsoodometryfusion->msg_.pose.pose.orientation.y),
+            static_cast<float>(torsoodometryfusion->msg_.pose.pose.orientation.z)
+        );
         heightmaphandler->basePosition_ <<
             torsoodometryfusion->msg_.pose.pose.position.x,
             torsoodometryfusion->msg_.pose.pose.position.y,

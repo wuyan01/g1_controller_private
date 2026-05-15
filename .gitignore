@@ -60,6 +60,8 @@ _build
 **/physhuman/exported/*.onnx
 **/physhuman_steer/exported/*.onnx
 **/physhuman_steer/params/text_embedding_dict.npz
+**/physhuman_goal/exported/*.onnx
+**/physhuman_goal/params/text_embedding_dict.npz
 
 # Teleop Recorded Dataset
 datasets

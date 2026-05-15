@@ -13,6 +13,9 @@ FSM:
     Physhuman_Steer:
       id: 5
       type: RLBase
+    Physhuman_goal:
+      id: 6
+      type: RLBase
 
     Mimic_Dance_102: # uncomment to enable
       id: 101
@@ -45,6 +48,7 @@ FSM:
       Velocity: A.on_pressed
       Physhuman: B.on_pressed
       Physhuman_Steer: X.on_pressed
+      Physhuman_goal: LB(2s) + Y.on_pressed
     kp: [
       100.0, 100.0, 100.0, 150.0, 40.0, 40.0, # left leg
       100.0, 100.0, 100.0, 150.0, 40.0, 40.0, # right leg
@@ -74,6 +78,7 @@ FSM:
       Passive: back.on_pressed
       Physhuman: LB(2s) + B.on_pressed
       Physhuman_Steer: LB(2s) + X.on_pressed
+      Physhuman_goal: LB(2s) + Y.on_pressed
       Mimic_Dance_102: LB(2s) + down.on_pressed
       Mimic_Gangnam_Style: LB(2s) + left.on_pressed
     policy_dir: config/policy/velocity
@@ -83,6 +88,7 @@ FSM:
       Passive: back.on_pressed
       Velocity: LB(2s) + A.on_pressed
       Physhuman_Steer: LB(2s) + X.on_pressed
+      Physhuman_goal: LB(2s) + Y.on_pressed
     policy_dir: config/policy/physhuman
 
   Physhuman_Steer:
@@ -90,7 +96,16 @@ FSM:
       Passive: back.on_pressed
       Physhuman: LB(2s) + A.on_pressed
       Velocity: LB(2s) + B.on_pressed
+      Physhuman_goal: LB(2s) + Y.on_pressed
     policy_dir: config/policy/physhuman_steer
+
+  Physhuman_goal:
+    transitions:
+      Passive: back.on_pressed
+      Velocity: LB(2s) + A.on_pressed
+      Physhuman: LB(2s) + B.on_pressed
+      Physhuman_Steer: LB(2s) + X.on_pressed
+    policy_dir: config/policy/physhuman_goal
 
   Mimic_Dance_102:
     transitions: 

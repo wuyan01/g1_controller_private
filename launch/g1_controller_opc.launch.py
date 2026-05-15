@@ -8,6 +8,7 @@ def generate_launch_description():
     simulation = LaunchConfiguration('simulation')
     network = LaunchConfiguration('network')
     pose_source_odom = LaunchConfiguration('pose_source_odom')
+    rviz = LaunchConfiguration('rviz')
 
     return LaunchDescription([
         DeclareLaunchArgument(
@@ -25,6 +26,11 @@ def generate_launch_description():
             default_value='/g1_controller/lidar/odom',
             description='Topic for pose source odometry'
         ),
+        DeclareLaunchArgument(
+            'rviz',
+            default_value='true',
+            description='Launch RViz with the g1_controller config'
+        ),
 
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource([
@@ -37,7 +43,8 @@ def generate_launch_description():
             launch_arguments={
                 'simulation': simulation,
                 'network': network,
-                'pose_source_odom': pose_source_odom
+                'pose_source_odom': pose_source_odom,
+                'rviz': rviz
             }.items()
         ),
 

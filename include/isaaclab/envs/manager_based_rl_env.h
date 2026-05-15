@@ -64,6 +64,7 @@ public:
         }
 
         robot->update();
+        initialize_goal_to_robot_if_unset();
 
         // load managers
         action_manager = std::make_unique<ActionManager>(cfg["actions"], this);
@@ -98,6 +99,7 @@ public:
         global_phase = 0;
         episode_length = 0;
         robot->update();
+        initialize_goal_to_robot_if_unset();
         action_manager->reset();
         observation_manager->reset();
     }
@@ -121,19 +123,61 @@ public:
     }
 
     // Thread-safe text key management for real-time text command updates
-    void set_text_key(const std::string& key) {
+    bool set_text_key(const std::string& key) {
         std::lock_guard<std::mutex> lock(text_key_mutex_);
         if (text_embedding_dict.count(key)) {
             current_text_key_ = key;
             spdlog::info("Text command updated: '{}'", key);
-        } else {
-            spdlog::warn("Text key '{}' not found in embedding dictionary. Ignoring.", key);
+            return true;
         }
+        spdlog::warn("Text key '{}' not found in embedding dictionary. Ignoring.", key);
+        return false;
+    }
+
+    bool has_text_key(const std::string& key) const {
+        return text_embedding_dict.count(key) > 0;
     }
 
     std::string get_text_key() const {
         std::lock_guard<std::mutex> lock(text_key_mutex_);
         return current_text_key_;
+    }
+
+    void set_goal_position(const Eigen::Vector3f& goal_pos_w)
+    {
+        std::lock_guard<std::mutex> lock(goal_mutex_);
+        goal_pos_w_ = goal_pos_w;
+        goal_initialized_ = true;
+        goal_received_ = true;
+    }
+
+    void reset_goal_position(const Eigen::Vector3f& goal_pos_w)
+    {
+        std::lock_guard<std::mutex> lock(goal_mutex_);
+        goal_pos_w_ = goal_pos_w;
+        goal_initialized_ = true;
+        goal_received_ = false;
+    }
+
+    Eigen::Vector3f get_goal_position() const
+    {
+        std::lock_guard<std::mutex> lock(goal_mutex_);
+        return goal_pos_w_;
+    }
+
+    bool has_goal_received() const
+    {
+        std::lock_guard<std::mutex> lock(goal_mutex_);
+        return goal_received_;
+    }
+
+    void initialize_goal_to_robot_if_unset()
+    {
+        std::lock_guard<std::mutex> lock(goal_mutex_);
+        if (!goal_initialized_) {
+            goal_pos_w_ = robot->data.root_pos_w;
+            goal_initialized_ = true;
+        }
     }
 
     std::vector<float> generate_noise_observation()
@@ -181,6 +225,10 @@ public:
 private:
     std::string current_text_key_;
     mutable std::mutex text_key_mutex_;
+    mutable std::mutex goal_mutex_;
+    Eigen::Vector3f goal_pos_w_ = Eigen::Vector3f::Zero();
+    bool goal_initialized_ = false;
+    bool goal_received_ = false;
     std::string noise_mode_ = "gaussian";
     std::mt19937 noise_gen_{42};
     std::normal_distribution<float> noise_dist_{0.0f, 1.0f};

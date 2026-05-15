@@ -2,6 +2,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.conditions import IfCondition
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
@@ -9,6 +10,7 @@ def generate_launch_description():
     simulation = LaunchConfiguration('simulation')
     network = LaunchConfiguration('network')
     pose_source_odom = LaunchConfiguration('pose_source_odom')
+    rviz = LaunchConfiguration('rviz')
 
     return LaunchDescription([
         DeclareLaunchArgument(
@@ -25,6 +27,11 @@ def generate_launch_description():
             'pose_source_odom',
             default_value='/g1_controller/sport_mode/odom',
             description='Topic for pose source odometry'
+        ),
+        DeclareLaunchArgument(
+            'rviz',
+            default_value='true',
+            description='Launch RViz with the g1_controller config'
         ),
         
         Node(
@@ -52,15 +59,16 @@ def generate_launch_description():
             ])
         ),
 
-        # Node(
-        #     package='rviz2',
-        #     executable='rviz2',
-        #     name='rviz2',
-        #     arguments=['-d', PathJoinSubstitution([
-        #         FindPackageShare('g1_controller'),
-        #         'config',
-        #         'rviz',
-        #         'config.rviz'
-        #     ])]
-        # )
+        Node(
+            package='rviz2',
+            executable='rviz2',
+            name='rviz2',
+            condition=IfCondition(rviz),
+            arguments=['-d', PathJoinSubstitution([
+                FindPackageShare('g1_controller'),
+                'config',
+                'rviz',
+                'config.rviz'
+            ])]
+        )
     ])

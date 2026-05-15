@@ -31,6 +31,9 @@ struct ArticulationData
     // Root linear velocity in base world frame.
     Eigen::Vector3f root_lin_vel_b;
 
+    // Root position in world/odom frame.
+    Eigen::Vector3f root_pos_w = Eigen::Vector3f::Zero();
+
     // Root angular velocity in base world frame.
     Eigen::Vector3f root_ang_vel_b;
 

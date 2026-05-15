@@ -6,12 +6,15 @@
 #include "FSMState.h"
 #include "isaaclab/envs/mdp/actions/joint_actions.h"
 #include "isaaclab/envs/mdp/terminations.h"
+#include <geometry_msgs/msg/pose_stamped.hpp>
 #include <std_msgs/msg/string.hpp>
 #include <std_msgs/msg/float32_multi_array.hpp>
+#include <visualization_msgs/msg/marker.hpp>
 #include <algorithm>
 #include <chrono>
 #include <fstream>
 #include <filesystem>
+#include <cmath>
 #include <mutex>
 
 class State_RLBase : public FSMState
@@ -33,6 +36,15 @@ public:
         }
 
         env->robot->update();
+        if (has_goal_command_observation_) {
+            env->reset_goal_position(Eigen::Vector3f(0.0f, 0.0f, env->robot->data.root_pos_w.z()));
+            env->set_text_key(goal_idle_text_key_);
+        } else {
+            env->initialize_goal_to_robot_if_unset();
+        }
+        goal_reached_since_ = rclcpp::Time(0, 0, node_ ? node_->get_clock()->get_clock_type() : RCL_ROS_TIME);
+        goal_reached_idle_sent_ = false;
+        goal_distance_log_counter_ = 0;
         action_update_seq_ = 0;
         last_applied_action_seq_ = 0;
         latest_action_.assign(env->robot->data.joint_ids_map.size(), 0.0f);
@@ -118,6 +130,7 @@ public:
         FSMState::pre_run();
         handle_text_commands();
         republish_velocitymarkers();
+        monitor_goal();
         simulate_heights();
     }
 
@@ -139,6 +152,11 @@ private:
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr text_cmd_sub_;
     rclcpp::CallbackGroup::SharedPtr text_cmd_cb_group_;
 
+    // ROS subscriber for goal-reaching commands
+    rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr goal_pose_sub_;
+    rclcpp::CallbackGroup::SharedPtr goal_pose_cb_group_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr goal_marker_pub_;
+
     // Action monitor (offline CSV + online ROS topic)
     bool action_csv_log_enabled_ = false;
     bool action_topic_pub_enabled_ = false;
@@ -158,6 +176,16 @@ private:
     std::size_t last_applied_action_seq_ = 0;
     std::size_t control_freq_sample_count_ = 0;
     steady_clock::time_point control_freq_window_start_{};
+    bool has_goal_command_observation_ = false;
+    double goal_reached_distance_ = 0.3;
+    double goal_reached_hold_time_ = 0.5;
+    std::size_t goal_distance_log_interval_ = 50;
+    std::string goal_marker_frame_id_ = "odom";
+    std::string goal_idle_text_key_ = "stand";
+    std::string goal_active_text_key_ = "walk";
+    rclcpp::Time goal_reached_since_{0, 0, RCL_ROS_TIME};
+    bool goal_reached_idle_sent_ = false;
+    std::size_t goal_distance_log_counter_ = 0;
 
     void monitor_action(const std::vector<float>& action);
     void publish_latest_action_snapshot(const std::vector<float>& action,
@@ -166,6 +194,10 @@ private:
                                         steady_clock::time_point& update_time,
                                         std::size_t& action_seq);
     void handle_text_commands();
+    void handle_text_command_msg(const std::string& key);
+    void monitor_goal();
+    void publish_goal_marker(double distance_xy);
+    double goal_distance_xy() const;
     void gauge_control_frequency(const steady_clock::time_point& action_time)
     {
         if (control_freq_sample_count_ == 0) {
@@ -198,6 +230,11 @@ private:
 
     void republish_velocitymarkers()
     {
+        if (!env->cfg["commands"].IsDefined() ||
+            !env->cfg["commands"]["base_velocity"].IsDefined() ||
+            !env->cfg["commands"]["base_velocity"]["ranges"].IsDefined()) {
+            return;
+        }
         auto & joystick = env->robot->data.joystick;
 
         const auto cfg = env->cfg["commands"]["base_velocity"]["ranges"];
