@@ -107,13 +107,15 @@ class Sam3Localization(Node):
         self.visible_pub = self.create_publisher(Bool, '/sam3/target_visible', 1)
         self.markers_pub = self.create_publisher(MarkerArray, '/sam3/object_markers', sensor_qos)
         self.status_pub = self.create_publisher(String, '/sam3/localization_status', 1)
+        result_qos = QoSProfile(depth=5, reliability=ReliabilityPolicy.RELIABLE)
         for kind, topic, key in [
             (Image, '/sam3/instance_labels', 'labels'),
             (Detection2DArray, '/sam3/detections', 'detections'),
             (Image, '/camera/aligned_depth_to_color/image_raw', 'depth'),
             (CameraInfo, '/camera/aligned_depth_to_color/camera_info', 'info'),
         ]:
-            self.create_subscription(kind, topic, lambda msg, key=key: self.receive(key, msg), sensor_qos)
+            self.create_subscription(kind, topic, lambda msg, key=key: self.receive(key, msg),
+                                     result_qos if key in ('labels', 'detections') else sensor_qos)
         self.create_subscription(String, '/sam3/prompt', self.on_prompt, 1)
         self.create_timer(0.05, self.process)
 

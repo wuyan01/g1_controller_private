@@ -189,8 +189,8 @@ install(DIRECTORY launch config
   DESTINATION share/${PROJECT_NAME}
 )
 
-install(PROGRAMS scripts/sam3_perception.py scripts/sam3_python.sh scripts/create_chair_scene.py
-                 scripts/sam3_localization.py
+install(PROGRAMS scripts/sam3_perception.py scripts/sam3_python.sh scripts/create_chair_scene.py scripts/create_desk_scene.py
+                 scripts/sam3_localization.py scripts/sam3_benchmark.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

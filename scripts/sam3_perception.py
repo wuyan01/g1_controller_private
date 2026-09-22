@@ -135,9 +135,10 @@ class Sam3Perception(Node):
         self.stopping = False
         self.fatal_error = None
         image_qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)
-        self.overlay_pub = self.create_publisher(Image, '/sam3/overlay', image_qos)
-        self.labels_pub = self.create_publisher(Image, '/sam3/instance_labels', image_qos)
-        self.detections_pub = self.create_publisher(Detection2DArray, '/sam3/detections', image_qos)
+        result_qos = QoSProfile(depth=5, reliability=ReliabilityPolicy.RELIABLE)
+        self.overlay_pub = self.create_publisher(Image, '/sam3/overlay', result_qos)
+        self.labels_pub = self.create_publisher(Image, '/sam3/instance_labels', result_qos)
+        self.detections_pub = self.create_publisher(Detection2DArray, '/sam3/detections', result_qos)
         self.status_pub = self.create_publisher(String, '/sam3/status', QoSProfile(
             depth=1, reliability=ReliabilityPolicy.RELIABLE,
             durability=DurabilityPolicy.TRANSIENT_LOCAL))
@@ -147,8 +148,10 @@ class Sam3Perception(Node):
         self.worker.start()
 
     def status(self, state, **details):
-        if rclpy.ok(context=self.context):
-            self.status_pub.publish(String(data=json.dumps(dict(state=state, **details))))
+        with self.condition:
+            details.setdefault('prompt', self.prompt)
+            if rclpy.ok(context=self.context):
+                self.status_pub.publish(String(data=json.dumps(dict(state=state, **details))))
 
     def on_image(self, msg):
         # Replace the pending frame; conversion and GPU work never run in callbacks.
@@ -160,6 +163,7 @@ class Sam3Perception(Node):
         with self.condition:
             self.prompt = msg.data.strip()
             self.generation += 1
+            self.status('prompt_changed', prompt=self.prompt)
             self.condition.notify()
         self.get_logger().info(f'SAM 3 prompt: {self.prompt!r}')
 

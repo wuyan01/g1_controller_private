@@ -19,10 +19,21 @@ def generate_launch_description():
         ('sam3_image_topic', '/camera/color/image_raw', 'RGB input topic'),
         ('sam3_localize', 'true', 'Estimate masked object positions using aligned depth and TF'),
         ('sam3_target_frame', 'pelvis', 'Frame for 3D object positions at image capture time'),
+        ('sam3_benchmark', 'false', 'Print simulation reference-point discrepancies in pelvis'),
+        ('sam3_target_body', 'desk_Furniture_Monitor', 'Exact MuJoCo body name for benchmarking'),
     ]
     return LaunchDescription([
         *[DeclareLaunchArgument(name, default_value=default, description=description)
           for name, default, description in arguments],
+        Node(
+            package='g1_controller', executable='sam3_benchmark.py',
+            name='sam3_benchmark', output='screen',
+            condition=IfCondition(LaunchConfiguration('sam3_benchmark')),
+            parameters=[{
+                'target_body': ParameterValue(LaunchConfiguration('sam3_target_body'), value_type=str),
+                'target_label': ParameterValue(LaunchConfiguration('sam3_prompt'), value_type=str),
+            }],
+        ),
         Node(
             package='g1_controller', executable='sam3_localization.py',
             name='sam3_localization', output='screen',

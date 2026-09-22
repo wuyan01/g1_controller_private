@@ -5,6 +5,7 @@
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 #include <tf2/LinearMath/Transform.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
@@ -44,6 +45,8 @@ class CameraPublisher {
         "/camera/aligned_depth_to_color/camera_info", qos);
     cloud_ = node_->create_publisher<sensor_msgs::msg::PointCloud2>(
         "/camera/depth/color/points", qos);
+    truth_ = node_->create_publisher<visualization_msgs::msg::MarkerArray>(
+        "/simulation/body_poses", rclcpp::QoS(10).reliable());
     mjv_defaultScene(&scene_);
     mjv_defaultOption(&option_);
     mjv_defaultCamera(&camera_);
@@ -120,6 +123,41 @@ class CameraPublisher {
       cam.frustum_width = 2 * cam.frustum_top * width / height;
     }
     stamp_ = node_->now();  // Matches the existing controller's ROS wall-clock TF.
+    truth_snapshot_.markers.clear();
+    const int pelvis = mj_name2id(model, mjOBJ_BODY, "pelvis");
+    if (pelvis >= 0 && truth_->get_subscription_count()) {
+      auto body_pose = [data](int body) {
+        const auto* r = data->xmat + 9 * body;
+        const auto* p = data->xpos + 3 * body;
+        return tf2::Transform(tf2::Matrix3x3(r[0], r[1], r[2], r[3], r[4], r[5],
+                                            r[6], r[7], r[8]), tf2::Vector3(p[0], p[1], p[2]));
+      };
+      const auto pelvis_from_world = body_pose(pelvis).inverse();
+      for (int body = 1; body < model->nbody; ++body) {
+        int ancestor = body;
+        while (ancestor && ancestor != pelvis) ancestor = model->body_parentid[ancestor];
+        if (ancestor == pelvis) continue;  // Environment bodies only.
+        const char* name = mj_id2name(model, mjOBJ_BODY, body);
+        if (!name) continue;
+        const auto pose = pelvis_from_world * body_pose(body);
+        const auto p = pose.getOrigin();
+        const auto q = pose.getRotation();
+        visualization_msgs::msg::Marker marker;
+        marker.header.stamp = stamp_;
+        marker.header.frame_id = "pelvis";
+        marker.ns = "mujoco_body_origin";
+        marker.id = body;
+        marker.text = name;
+        marker.type = visualization_msgs::msg::Marker::SPHERE;
+        marker.pose.position.x = p.x(); marker.pose.position.y = p.y(); marker.pose.position.z = p.z();
+        marker.pose.orientation.x = q.x(); marker.pose.orientation.y = q.y();
+        marker.pose.orientation.z = q.z(); marker.pose.orientation.w = q.w();
+        marker.scale.x = marker.scale.y = marker.scale.z = 0.04;
+        marker.color.r = 1.0; marker.color.a = 1.0;
+        marker.lifetime.sec = 1;
+        truth_snapshot_.markers.push_back(marker);
+      }
+    }
     ready_ = true;
   }
 
@@ -189,6 +227,7 @@ class CameraPublisher {
     info.r = {1, 0, 0, 0, 1, 0, 0, 0, 1};
     info.p = {focal, 0, cx, 0, 0, focal, cy, 0, 0, 0, 1, 0};
     color_->publish(color);
+    if (!truth_snapshot_.markers.empty()) truth_->publish(truth_snapshot_);
     depth_->publish(depth);
     color_info_->publish(info);
     depth_info_->publish(info);
@@ -225,6 +264,8 @@ class CameraPublisher {
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr color_, depth_;
   rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr color_info_, depth_info_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr truth_;
+  visualization_msgs::msg::MarkerArray truth_snapshot_;
   mjvScene scene_{};
   mjvOption option_{};
   mjvCamera camera_{};

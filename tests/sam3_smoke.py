@@ -45,7 +45,7 @@ def main():
     import numpy as np
     from PIL import Image as PILImage
     import rclpy
-    from rclpy.qos import qos_profile_sensor_data, ReliabilityPolicy
+    from rclpy.qos import qos_profile_sensor_data, QoSProfile, ReliabilityPolicy
     from sensor_msgs.msg import Image
     from std_msgs.msg import String
     from vision_msgs.msg import Detection2DArray, Detection3DArray
@@ -72,7 +72,9 @@ def main():
         if len(cache[key]) > 300:
             cache[key].pop(next(iter(cache[key])))
     subscriptions = [observer.create_subscription(kind, topic,
-        lambda msg, key=key: receive(msg, key), qos_profile_sensor_data)
+        lambda msg, key=key: receive(msg, key),
+        QoSProfile(depth=5, reliability=ReliabilityPolicy.RELIABLE)
+        if key in ('overlay', 'labels', 'detections') else qos_profile_sensor_data)
         for kind, topic, key in [
             (Image, '/camera/color/image_raw', 'rgb'),
             (Image, '/sam3/overlay', 'overlay'),

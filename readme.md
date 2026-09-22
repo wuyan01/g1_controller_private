@@ -185,6 +185,29 @@ The chair starts outside the forward-facing camera view. Turn the humanoid
 around to bring it into view. For the detection smoke test, generate a separate
 scene with `--chair-x 1.4` so the chair is visible immediately.
 
+To use the photo desk environment from `maskedmimic_desk/assets/desk_scene.xml`,
+copy that XML and its `meshes/` and `textures/` directories into the container,
+then generate a scene with the controller-compatible robot:
+
+```bash
+ros2 run g1_controller create_desk_scene.py \
+  --mujoco-dir /root/Workspaces/g1_ws/unitree_mujoco \
+  --source /opt/g1-scenes/desk/source/desk_scene.xml \
+  --output-dir /opt/g1-scenes/desk
+ros2 run g1_controller g1_mujoco_camera -r g1 \
+  -s /opt/g1-scenes/desk/scene_29dof_desk.xml -i 0 -n lo
+```
+
+The current container already has these assets and the generated scene. The
+adapter rotates the environment so its open front faces the robot and positions
+the desk center 1.2 m along world +X (`--desk-x` changes this distance). The robot
+starts at its usual origin. Original meshes, textures, collision proxies, and
+12 movable props are retained; robot joints remain first in the state layout.
+Use the environment-only `desk_scene.xml`, not the Dex3 robot variants. Generated
+scenes reference absolute asset paths and must be regenerated if assets move.
+Run the controller launch above in a second terminal with `sam3_prompt:=monitor`
+to detect the visible monitor. The closed laptop is partly covered by headphones.
+
 Use the same SAM 3
 arguments with `simulation:=false` and the appropriate deployment network and
 odometry settings. Physical-camera segmentation has not yet been validated on
@@ -469,3 +492,78 @@ If you find this repository useful for your research, please consider citing:
   year={2025}
 }
 ```
+
+### Simulation position benchmark
+
+Restart `g1_mujoco_camera` after rebuilding, then enable the benchmark in the
+controller launch (alongside the existing SAM3 checkpoint/Python arguments):
+
+```bash
+ros2 launch g1_controller g1_controller_robogpc_steering.launch.py \
+  simulation:=true camera:=true rviz:=true sam3:=true \
+  sam3_python:=/opt/g1-sam3-venv/bin/python \
+  sam3_checkpoint:=/opt/g1-models/sam3.pt sam3_prompt:=monitor \
+  sam3_benchmark:=true sam3_target_body:=desk_Furniture_Monitor
+```
+
+For an already running perception stack, start only the printer:
+
+```bash
+ros2 run g1_controller sam3_benchmark.py --ros-args \
+  -p target_label:=monitor -p target_body:=desk_Furniture_Monitor
+```
+
+The printer reports estimated XYZ, ground-truth XYZ, signed XYZ differences
+(estimate minus truth), Euclidean distance, running RMSE, and sample count in
+**meters relative to pelvis**. It prints up to once per second; `/sam3/benchmark`
+contains JSON for every valid pair, including the capture timestamp and running
+mean distance. RMSE is `sqrt(mean(||estimate - truth||^2))` across valid samples.
+
+MuJoCo publishes `/simulation/body_poses` as a `MarkerArray`; `marker.text` is
+the exact body name and the pose is its body origin/orientation in pelvis.
+These poses are copied under the physics mutex with the rendered camera scene
+and use the image's exact timestamp. The benchmark caches them for delayed
+inference and never substitutes a current pose for an older image. Dynamic
+props follow their actual simulated poses. Missing detections, missing truth,
+frame mismatches, and multiple detections matching the label are excluded with
+a diagnostic, rather than assigned a zero error. Use `sam3_target_frame:=pelvis`.
+Switch targets while the stack is running with one command:
+
+```bash
+ros2 topic pub --once /sam3/prompt std_msgs/msg/String "{data: 'keyboard'}"
+```
+
+A benchmark started after a target change reads the active prompt from the
+perception node's retained `/sam3/status`; it does not require the prompt command
+to be sent again. Status synchronization occurs once, so delayed status cannot
+override a newer live command or repeatedly reset statistics.
+
+This updates SAM3 and switches the benchmark to `desk_Props_Keyboard`, clearing
+statistics and rejecting delayed frames captured before the switch. Supported
+desk prompts: `monitor`, `desk`/`table`, `keyboard`, `mouse`, `headphones`, `laptop`,
+`notebook`, `pen`, `food container`, `toothpaste tube`, `cloth`, `lanyard`, `pouch`,
+and `twist tie`. New objects use a zero reference offset; returning to the launch
+label restores its configured body and offset. Unknown prompts still work for
+perception but pause benchmarking instead of comparing against the wrong body.
+An empty prompt clears perception and pauses benchmarking. Existing processes
+must load this code once (restart the benchmark node); subsequent switches need
+no restart.
+
+**Reference-point limitation:** the estimate is a median of visible surface
+points, while default ground truth is the MuJoCo body origin. Their separation
+includes object geometry and occlusion bias, so it is not pure segmentation or
+camera error. To benchmark against a chosen body-local point, run the standalone
+printer with `-p reference_offset:="[0.0, 0.0, 0.0]"` replaced by that point's XYZ
+in meters. The offset rotates with the object's actual orientation. For the desk
+scene, other exact body names include `desk_Props_Laptop`, `desk_Props_Keyboard`,
+and `desk_Props_Mouse`; set the matching label explicitly. Ground truth is
+simulation-only. Physical-camera position extraction uses the same localizer.
+
+SAM3 result images and detection metadata now use reliable delivery (camera
+input stays best effort), so the localizer can recover lost mask fragments.
+
+Validation: `tests/test_sam3_benchmark.py` covers reference-point rotation,
+strict frame/timestamp matching, ambiguous association, invalid coordinates,
+delayed truth, and duplicate suppression. `tests/benchmark_smoke.py` exercises
+the live desk scene with controller pelvis TF; run only with Unitree domain 0
+idle (the test uses loopback and ROS domain 93).
