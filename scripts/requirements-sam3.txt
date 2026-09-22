@@ -1,0 +1,8 @@
+# Use an environment with compatible PyTorch/torchvision + CUDA already installed.
+# Keep NumPy compatible with the ROS Jazzy cv_bridge binary.
+numpy>=1.26,<2
+sam3 @ git+https://github.com/facebookresearch/sam3.git@2345a4ad109ac29c569da749c91d84f10dc08c40
+einops==0.8.2
+pycocotools==2.0.11
+decord==0.6.0
+psutil

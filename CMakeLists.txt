@@ -189,6 +189,11 @@ install(DIRECTORY launch config
   DESTINATION share/${PROJECT_NAME}
 )
 
+install(PROGRAMS scripts/sam3_perception.py scripts/sam3_python.sh scripts/create_chair_scene.py
+                 scripts/sam3_localization.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 ament_export_include_directories(include)
 ament_export_libraries(${PROJECT_NAME}_lib)
 ament_export_dependencies(

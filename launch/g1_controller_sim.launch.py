@@ -1,10 +1,46 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription
+import os
+import tempfile
+import yaml
+
+from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription, OpaqueFunction, RegisterEventHandler
+from launch.event_handlers import OnShutdown
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch.conditions import IfCondition
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
+
+
+def launch_rviz(context):
+    config_path = PathJoinSubstitution([
+        FindPackageShare('g1_controller'), 'config', 'rviz', 'config.rviz'
+    ]).perform(context)
+    cleanup = []
+    if IfCondition(LaunchConfiguration('sam3')).evaluate(context):
+        with open(config_path) as stream:
+            config = yaml.safe_load(stream)
+        camera = next(item for item in config['Visualization Manager']['Displays']
+                      if item.get('Name') == 'Camera')
+        overlay = next(item for item in camera['Displays'] if item.get('Name') == 'SAM3 Overlay')
+        overlay.update(Enabled=True, Value=True)
+        positions = next(item for item in camera['Displays'] if item.get('Name') == 'SAM3 Positions')
+        positions.update(Enabled=True, Value=True)
+        with tempfile.NamedTemporaryFile(mode='w', prefix='g1-sam3-rviz-', suffix='.rviz',
+                                         delete=False) as stream:
+            yaml.safe_dump(config, stream)
+            config_path = stream.name
+
+        def remove_config(_context):
+            if os.path.exists(config_path):
+                os.unlink(config_path)
+            return []
+
+        cleanup = [RegisterEventHandler(OnShutdown(
+            on_shutdown=[OpaqueFunction(function=remove_config)]))]
+    return cleanup + [Node(package='rviz2', executable='rviz2', name='rviz2',
+                           arguments=['-d', config_path])]
+
 
 def generate_launch_description():
     simulation = LaunchConfiguration('simulation')
@@ -37,6 +73,16 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'camera', default_value='true',
             description='Enable the shared simulated/physical RGB-D camera interface'
+        ),
+        DeclareLaunchArgument(
+            'sam3', default_value='false',
+            description='Enable text-prompt SAM 3 perception on the shared camera stream'
+        ),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(PathJoinSubstitution([
+                FindPackageShare('g1_controller'), 'launch', 'g1_sam3.launch.py'
+            ])),
+            condition=IfCondition(LaunchConfiguration('sam3')),
         ),
         GroupAction(
             condition=IfCondition(LaunchConfiguration('camera')),
@@ -79,16 +125,5 @@ def generate_launch_description():
             ])
         ),
 
-        Node(
-            package='rviz2',
-            executable='rviz2',
-            name='rviz2',
-            condition=IfCondition(rviz),
-            arguments=['-d', PathJoinSubstitution([
-                FindPackageShare('g1_controller'),
-                'config',
-                'rviz',
-                'config.rviz'
-            ])]
-        )
+        OpaqueFunction(function=launch_rviz, condition=IfCondition(rviz)),
     ])

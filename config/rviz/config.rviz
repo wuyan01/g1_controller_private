@@ -549,6 +549,27 @@ Visualization Manager:
           Queue Size: 1
           Normalize Range: true
           Value: true
+        - Class: rviz_default_plugins/MarkerArray
+          Name: SAM3 Positions
+          Enabled: false
+          Topic:
+            Depth: 1
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Best Effort
+            Value: /sam3/object_markers
+          Value: false
+        - Class: rviz_default_plugins/Image
+          Name: SAM3 Overlay
+          Enabled: false
+          Topic:
+            Depth: 1
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Best Effort
+            Value: /sam3/overlay
+          Normalize Range: true
+          Value: false
         - Class: rviz_default_plugins/Image
           Name: Camera Depth
           Enabled: false

@@ -130,6 +130,208 @@ calibration/cloud, depth units, point projection, color packing, and RViz
 subscriptions, and shuts down its test processes. Real hardware image capture
 must still be checked on a connected G1 camera.
 
+## SAM 3 perception
+
+The optional Python node consumes the same camera topic in simulation and on the
+physical G1. It runs independently from the controller and defaults to **2 Hz**,
+keeping only the latest pending image. Enable it with `sam3:=true`; the shared
+controller launch then also enables **SAM3 Overlay** in RViz automatically.
+SAM 3 is disabled by default.
+
+The current `g1-robogpc-sim` container has been provisioned with:
+
+- Interpreter: `/opt/g1-sam3-venv/bin/python` (isolated dependencies, reusing the
+  existing PyTorch 2.10/CUDA 12.8 installation).
+- Checkpoint: `/opt/g1-models/sam3.pt`, copied from the supplied host Hugging Face
+  cache. The host checkpoint is unchanged.
+- Standard ROS `vision_msgs` messages.
+
+With `g1_mujoco_camera` running in another terminal, start the controller:
+
+```bash
+source /root/Workspaces/g1_ros_ws/install/setup.bash
+ros2 launch g1_controller g1_controller_robogpc_steering.launch.py \
+  simulation:=true camera:=true rviz:=true sam3:=true \
+  sam3_python:=/opt/g1-sam3-venv/bin/python \
+  sam3_checkpoint:=/opt/g1-models/sam3.pt \
+  sam3_prompt:=floor
+```
+
+The default MuJoCo scene shows a checkerboard floor, so `floor` is a useful first
+prompt. A reusable chair scene is provided in `config/mujoco/chair.xml`. Generate
+the full scene inside the container (the current container already has it):
+
+```bash
+ros2 run g1_controller create_chair_scene.py \
+  --mujoco-dir /root/Workspaces/g1_ws/unitree_mujoco \
+  --output-dir /opt/g1-scenes/chair
+```
+
+Stop the previous simulator, then start the generated scene:
+
+```bash
+ros2 run g1_controller g1_mujoco_camera -r g1 \
+  -s /opt/g1-scenes/chair/scene_29dof_chair.xml -i 0 -n lo
+```
+
+Use `sam3_prompt:=chair` in the controller command above, or publish `chair` on
+`/sam3/prompt` if perception is already running. The chair is a fixed perception
+prop, 1.4 m behind the robot (world X = -1.4 m); it adds no joints and preserves the robot's state
+layout. The generator accepts `--chair-x` and `--chair-y` to reposition it,
+keeps the vendor checkout untouched, and resolves the existing robot mesh paths.
+The `/opt/g1-scenes` output must be regenerated after recreating the container.
+
+The chair starts outside the forward-facing camera view. Turn the humanoid
+around to bring it into view. For the detection smoke test, generate a separate
+scene with `--chair-x 1.4` so the chair is visible immediately.
+
+Use the same SAM 3
+arguments with `simulation:=false` and the appropriate deployment network and
+odometry settings. Physical-camera segmentation has not yet been validated on
+the robot.
+
+If the controller/camera are already running, start perception alone:
+
+```bash
+ros2 launch g1_controller g1_sam3.launch.py \
+  sam3_python:=/opt/g1-sam3-venv/bin/python \
+  sam3_checkpoint:=/opt/g1-models/sam3.pt sam3_prompt:=floor
+```
+
+In an already-open RViz, check **Camera → SAM3 Overlay**, or add an Image display
+on `/sam3/overlay` with best-effort reliability. Change the prompt at runtime:
+
+```bash
+ros2 topic pub --once /sam3/prompt std_msgs/msg/String "data: 'chair'"
+# Empty text pauses inference and clears results on the next camera frame:
+ros2 topic pub --once /sam3/prompt std_msgs/msg/String "data: ''"
+```
+
+| Topic | ROS type | Meaning |
+| --- | --- | --- |
+| `/camera/color/image_raw` | `sensor_msgs/Image` | RGB input, configurable with `sam3_image_topic` |
+| `/sam3/prompt` | `std_msgs/String` | Updated text prompt |
+| `/sam3/overlay` | `sensor_msgs/Image` (`rgb8`) | Colored masks, boxes, and confidence labels |
+| `/sam3/instance_labels` | `sensor_msgs/Image` (`16UC1`) | 0 = background; positive values identify instances |
+| `/sam3/detections` | `vision_msgs/Detection2DArray` | Pixel boxes, prompt as class, confidence, and instance IDs |
+| `/sam3/status` | `std_msgs/String` | JSON state, processing duration, source timestamp, and errors |
+
+All three segmentation outputs preserve the source image's timestamp and frame
+ID. Subscribe with sensor-data QoS (best effort, volatile, depth 1). Status uses
+reliable, transient-local QoS. Empty detections publish an empty array, all-zero
+labels, and the original RGB image. Instance IDs restart per frame and match
+`Detection2D.id`; they are **not tracking IDs**. Higher-confidence masks win
+where masks overlap in the single label image. Boxes/detections retain all
+selected instances, including an instance fully occluded in that label image.
+Depth-based localization is enabled by default with SAM 3; it does not issue
+robot motion commands.
+
+Additional launch settings: `sam3_rate:=2.0`, `sam3_threshold:=0.5`, and
+`sam3_device:=cuda` (also accepts `cuda:1` or `cpu`). `sam3_prompt` is the initial
+prompt; use the topic to update it. Other settings require restarting the node.
+An empty `sam3_checkpoint` uses Hugging Face, requiring checkpoint access and a
+cached model or network. Use an explicit local checkpoint for offline operation.
+Startup failures terminate the node with an error instead of running an
+uninitialized model. The Python launcher prioritizes PyTorch's bundled NVIDIA
+libraries for this process, avoiding the cuBLAS/cuBLASLt mismatch encountered
+with the container's system CUDA toolkit.
+
+### Object position relative to the pelvis
+
+`sam3:=true` also starts `sam3_localization.py` by default. It combines each
+instance label with aligned depth and calibration from the **same capture**
+(with up to 20 ms timestamp tolerance for depth/calibration), then uses TF at
+the RGB timestamp to express the result in `pelvis`. Delayed SAM 3 outputs are
+matched against a bounded 120-frame depth/calibration cache. There is no
+fallback to the latest TF when the capture-time transform is unavailable.
+
+Read the highest-confidence valid object's position:
+
+```bash
+ros2 topic echo /sam3/target_position --qos-reliability best_effort
+```
+
+The message is `geometry_msgs/PointStamped`, with `header.frame_id: pelvis` and
+`point: {x, y, z}` in **meters**: +X forward, +Y left, +Z up relative to the pelvis
+at capture time. The controller/robot-state publisher must supply the waist
+joint transforms connecting `pelvis` to the camera. A torso-mounted camera's
+extrinsics alone are insufficient if those joints are moving.
+
+| Topic | Type | Meaning |
+| --- | --- | --- |
+| `/sam3/target_position` | `geometry_msgs/PointStamped` | Highest-confidence localized match |
+| `/sam3/target_visible` | `std_msgs/Bool` | Whether a valid target is currently available |
+| `/sam3/detections_3d` | `vision_msgs/Detection3DArray` | All localized instances, matching the 2D IDs and prompt |
+| `/sam3/object_markers` | `visualization_msgs/MarkerArray` | Green position markers in RViz |
+| `/sam3/localization_status` | `std_msgs/String` | JSON validity and reason for unavailable localization |
+
+In each 3D detection, `results[0].pose.pose.position` is the estimated position.
+The estimator erodes mask boundaries, rejects invalid depth and depth outliers,
+back-projects valid pixels with camera intrinsics/distortion, and takes the
+coordinate-wise median of the transformed visible-surface points. It supports
+`16UC1` millimeter depth and `32FC1` meter depth. This is a **visible-surface
+position**, not an inferred full-object center. The 3D box represents 5th–95th
+percentile extents of that observed surface, aligned to the target frame;
+object orientation is not estimated.
+
+No target point is published when localization fails. The 3D array becomes
+empty, markers clear, and `target_visible` becomes false if the object leaves
+the view, the prompt changes, depth/TF is unavailable, or no fresh result arrives
+for 3 seconds. Consumers must check visibility and timestamps instead of
+reusing the last point indefinitely. Because the chair starts behind the robot,
+it has no camera-derived position until the robot turns to see it. This node
+does not maintain an object map while the chair is out of view.
+
+RViz automatically enables **SAM3 Positions** when launched with `sam3:=true`.
+Use `sam3_target_frame:=torso_link` for a different output frame, or
+`sam3_localize:=false` for segmentation only. The localization node's inputs
+are the shared aligned-depth topics, and can be remapped when running it
+separately. Both simulation and RealSense use the same code.
+
+### Recreate the SAM 3 environment
+
+The paths under `/opt` persist in this container, but must be provisioned again
+if the container is recreated. Inside a network-enabled ROS Jazzy container,
+as root, with compatible GPU PyTorch/torchvision already installed:
+
+```bash
+apt-get install ros-jazzy-vision-msgs ros-jazzy-cv-bridge python3-venv
+cd /root/Workspaces/g1_ros_ws
+source /opt/ros/jazzy/setup.bash
+python3 -m venv --system-site-packages /opt/g1-sam3-venv
+/opt/g1-sam3-venv/bin/python -m pip install \
+  -r src/g1_rsl/dependencies/g1_controller/scripts/requirements-sam3.txt
+# Make your approved sam3.pt available and pass its container-local path.
+colcon build --packages-select g1_controller
+```
+
+The requirements pin the official SAM 3 source revision used here. For a
+network-isolated simulation container, prepare wheels outside the container
+and install them offline into the environment. The node does not change the
+controller's C++ inference libraries. Measure controller timing when sharing a
+GPU with perception; the default rate is an inference cap, not a latency guarantee.
+
+### Validation
+
+With ROS sourced, run the scheduling/output tests without model weights:
+
+```bash
+ROS_DOMAIN_ID=88 python3 -m unittest discover -s tests -p "test_sam3*.py" -v
+```
+
+For real checkpoint inference through the live MuJoCo camera and RViz:
+
+```bash
+python3 tests/sam3_smoke.py --checkpoint /opt/g1-models/sam3.pt
+```
+
+The latter starts only simulator/perception/visualization processes on isolated
+ROS domain 89 and Unitree domain 90, checks headers, instance IDs, a nonempty floor mask, RViz
+subscription, live depth localization, and live prompt clearing, then stops its processes.
+The controller-free smoke test uses `torso_link` because it has no waist joint
+publisher; unit tests separately verify pelvis transforms at the capture timestamp. It saves an
+overlay preview to `/tmp/g1-sam3-live-overlay.png` inside the container.
+
 ## GPU Inference
 
 The inference process on GPU provides significant speedup compared to CPU inference.  

@@ -1,0 +1,11 @@
+<mujocoinclude>
+  <!-- Fixed perception prop. No joints: preserve the G1 state/actuator layout. -->
+  <body name="demo_chair" pos="-1.4 0 0" euler="0 0 0.35">
+    <geom name="chair_seat" type="box" pos="0 0 0.46" size="0.25 0.24 0.035" rgba="0.55 0.27 0.10 1"/>
+    <geom name="chair_front_left_leg" type="capsule" fromto="-0.20 0.19 0.025 -0.20 0.19 0.43" size="0.025" rgba="0.32 0.14 0.05 1"/>
+    <geom name="chair_front_right_leg" type="capsule" fromto="-0.20 -0.19 0.025 -0.20 -0.19 0.43" size="0.025" rgba="0.32 0.14 0.05 1"/>
+    <geom name="chair_back_left_leg" type="capsule" fromto="0.20 0.19 0.025 0.20 0.19 0.90" size="0.025" rgba="0.32 0.14 0.05 1"/>
+    <geom name="chair_back_right_leg" type="capsule" fromto="0.20 -0.19 0.025 0.20 -0.19 0.90" size="0.025" rgba="0.32 0.14 0.05 1"/>
+    <geom name="chair_backrest" type="box" pos="0.20 0 0.78" size="0.025 0.24 0.13" rgba="0.60 0.31 0.12 1"/>
+  </body>
+</mujocoinclude>

@@ -31,6 +31,10 @@ def generate_launch_description():
             'camera', default_value='true',
             description='Enable the shared RGB-D camera interface'
         ),
+        DeclareLaunchArgument(
+            'sam3', default_value='false',
+            description='Enable SAM 3 perception; accepts sam3_prompt/checkpoint/device/rate/python'
+        ),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource([
                 PathJoinSubstitution([
@@ -46,6 +50,7 @@ def generate_launch_description():
                 'pose_source_odom': LaunchConfiguration('pose_source_odom'),
                 'rviz': LaunchConfiguration('rviz'),
                 'camera': LaunchConfiguration('camera'),
+                'sam3': LaunchConfiguration('sam3'),
             }.items()
         ),
     ])
