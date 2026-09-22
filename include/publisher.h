@@ -87,14 +87,15 @@ public:
         marker_pub_ = node->create_publisher<visualization_msgs::msg::MarkerArray>(velocitymarkers_topic, queue_size);
     }
 
-    void publish()
+    void publish(const std::string& frame_id = "torso_link", double lifetime_seconds = 0.0)
     {
         std::lock_guard<std::mutex> lock(mutex_);
 
         marker_array_.markers.clear();
         
         cmd_marker_.header.stamp = rclcpp::Time(0, 0, clock_->get_clock_type());
-        cmd_marker_.header.frame_id = "torso_link";
+        cmd_marker_.header.frame_id = frame_id;
+        cmd_marker_.lifetime = rclcpp::Duration::from_seconds(lifetime_seconds);
         cmd_marker_.ns = "cmd_vel";
         cmd_marker_.id = 0;
         cmd_marker_.type = visualization_msgs::msg::Marker::ARROW;
@@ -116,7 +117,8 @@ public:
 
 
         real_marker_.header.stamp = rclcpp::Time(0, 0, clock_->get_clock_type());
-        real_marker_.header.frame_id = "torso_link";
+        real_marker_.header.frame_id = frame_id;
+        real_marker_.lifetime = rclcpp::Duration::from_seconds(lifetime_seconds);
         real_marker_.ns = "real_vel";
         real_marker_.id = 1;
         real_marker_.type = visualization_msgs::msg::Marker::ARROW;

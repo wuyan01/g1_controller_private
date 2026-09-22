@@ -134,6 +134,13 @@ REGISTER_OBSERVATION(velocity_commands)
     return obs;
 }
 
+// Raw heading-local velocity xy and independent unit facing direction xy.
+// Integration occurs once in env->step(); observation reads never advance it.
+REGISTER_OBSERVATION(steering_command)
+{
+    return env->get_steering_command();
+}
+
 REGISTER_OBSERVATION(goal_command)
 {
     auto & asset = env->robot;

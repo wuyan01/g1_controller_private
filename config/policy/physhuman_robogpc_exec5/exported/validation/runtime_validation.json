@@ -1,0 +1,57 @@
+{
+  "onnx_runtime": "1.22.0",
+  "exec_steps": 5,
+  "sampling_timesteps": 10,
+  "standalone_cpu": {
+    "passed": true,
+    "calls": 34,
+    "expected_index_sequence": true,
+    "action_reset_replay_max_abs_error": 0.0,
+    "cache_reset_replay_max_abs_error": 0.0,
+    "latency": {
+      "all": {
+        "calls": 34,
+        "min_ms": 0.251751,
+        "median_ms": 0.387186,
+        "mean_ms": 7.40852,
+        "max_ms": 41.8507
+      },
+      "bootstrap": {
+        "calls": 10,
+        "min_ms": 0.251751,
+        "median_ms": 0.3766,
+        "mean_ms": 0.470706,
+        "max_ms": 0.782787
+      },
+      "replan": {
+        "calls": 6,
+        "min_ms": 36.3872,
+        "median_ms": 40.482,
+        "mean_ms": 40.0183,
+        "max_ms": 41.8507
+      },
+      "cached": {
+        "calls": 18,
+        "min_ms": 0.252393,
+        "median_ms": 0.310227,
+        "mean_ms": 0.392929,
+        "max_ms": 0.736384
+      }
+    }
+  },
+  "actual_stateful_runner": {
+    "passed": true,
+    "calls": 34,
+    "virtual_reset_action_zeroed": true,
+    "runner_action_reset_replay_max_abs_error": 0.0,
+    "reference_cache_reset_replay_max_abs_error": 0.0,
+    "runner_reference_max_abs_error": 0.0,
+    "provider": "CPU fallback; isolated bundled ORT core without GPU plugins",
+    "fresh_measured_state_each_tick": true
+  },
+  "limitations": [
+    "No closed-loop simulator or robot control was run.",
+    "GPU providers were not validated.",
+    "CPU replan calls exceed the configured 20 ms control period."
+  ]
+}

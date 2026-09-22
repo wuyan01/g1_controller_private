@@ -1,0 +1,393 @@
+{
+  "policy": "physhuman_robogpc_steering",
+  "exec_steps": 5,
+  "sampling_timesteps": 20,
+  "training_sampling_timesteps": 20,
+  "sampler_override": false,
+  "fps": 50.0,
+  "ddim_schedule_rows_per_plan": 24,
+  "source_config": "/home/wuyan/Workspaces/g1_ros_ws/src/g1_rsl/dependencies/g1_controller/config/policy/physhuman/params/deploy.yaml",
+  "source_config_sha256": "8f506e6b485801936b7b2aacb8f7401c4b6702335fbd32a248a395601266889e",
+  "onnx_sha256": "e1deb55e31c4709aa4c2d3bf6ddfe1fb26021756f5fbdbfa1334c69d3b1826aa",
+  "steering_actor_sha256": "44e945aa9c82bc1b31e55b1c276c47b1a9974800daa612a459daf227ffe98da7",
+  "opset": 17,
+  "onnx_ir_version": 8,
+  "inputs": {
+    "obs": [
+      1,
+      593
+    ],
+    "plan_cache_flat": [
+      1,
+      160
+    ],
+    "plan_idx": [
+      1
+    ],
+    "plan_valid": [
+      1
+    ]
+  },
+  "input_dtypes": {
+    "obs": "float32",
+    "plan_cache_flat": "float32",
+    "plan_idx": "int64",
+    "plan_valid": "float32"
+  },
+  "outputs": {
+    "actions": [
+      1,
+      29
+    ],
+    "plan_cache_flat_out": [
+      1,
+      160
+    ],
+    "plan_idx_out": [
+      1
+    ],
+    "plan_valid_out": [
+      1
+    ]
+  },
+  "observation_layout": {
+    "base_lin_vel": {
+      "offset": 0,
+      "width": 3,
+      "history_length": 5
+    },
+    "base_ang_vel": {
+      "offset": 15,
+      "width": 3,
+      "history_length": 5
+    },
+    "projected_gravity": {
+      "offset": 30,
+      "width": 3,
+      "history_length": 5
+    },
+    "joint_pos_rel": {
+      "offset": 45,
+      "width": 29,
+      "history_length": 5
+    },
+    "joint_vel_rel": {
+      "offset": 190,
+      "width": 29,
+      "history_length": 5
+    },
+    "last_action": {
+      "offset": 335,
+      "width": 29,
+      "history_length": 5
+    },
+    "steering_command": {
+      "offset": 480,
+      "width": 4,
+      "history_length": 1
+    },
+    "noise": {
+      "offset": 484,
+      "width": 109,
+      "history_length": 1
+    }
+  },
+  "text_conditioning": false,
+  "actor_observation": "normalized history545, normalized current state93, heading-local velocity2, facing2",
+  "noise": "unbounded epsilon109 -> actor mean + std * epsilon -> shared across five tokens -> diffusion clipping",
+  "cache_layout": {
+    "executed_latent_history": [
+      0,
+      80
+    ],
+    "latent_plan": [
+      80,
+      160
+    ]
+  },
+  "plan_idx_semantics": "bootstrap count 0..4; then 5+next phase (5 replans,6..9 reuse)",
+  "bootstrap": {
+    "steps": 5,
+    "type": "static_default_pose_tracker_encoder",
+    "bounded_latent": [
+      -2.8601527214050293,
+      1.1431736946105957,
+      -0.58716881275177,
+      0.5336783528327942,
+      -1.7168288230895996,
+      -1.5163477659225464,
+      1.7236473560333252,
+      -2.121793031692505,
+      -1.861129641532898,
+      -0.45241445302963257,
+      -2.461498260498047,
+      -2.5058274269104004,
+      -0.6648712158203125,
+      -1.4536726474761963,
+      3.3130524158477783,
+      0.5227459073066711
+    ]
+  },
+  "conditional_actor_and_diffusion": true,
+  "steering": {
+    "checkpoint": "/home/wuyan/Documents/code/protomotions-uniphys/checkpoints/robogpc_uniphys_20k5/steering.ckpt",
+    "update": 6650,
+    "total_valid_transitions": 808462321,
+    "actor_observation_dim": 642,
+    "actor_observation_layout": "normalized_history545, normalized_state93, heading_velocity_command2, heading_facing_command2",
+    "command_layout": [
+      "heading_velocity_x",
+      "heading_velocity_y",
+      "heading_facing_x",
+      "heading_facing_y"
+    ],
+    "noise_dim": 109,
+    "noise_layout": "shared_raw_seed109_across_all_future_tokens",
+    "noise_semantics": "raw actor mean + exp(clamped log_std) * unclipped standard-normal epsilon",
+    "policy_mode": "sample",
+    "exec_steps": 5,
+    "warmup_steps": 5,
+    "uncertainty_scale": 1.0,
+    "temporal_alignment": "post_action",
+    "training_sampling_timesteps": 20,
+    "sampling_timesteps": 20,
+    "sampling_override": null,
+    "training_diffusion_config": {
+      "timesteps": 50,
+      "sampling_timesteps": 20,
+      "beta_schedule": "cosine",
+      "objective": "pred_v",
+      "ddim_sampling_eta": 0.0,
+      "clip_noise": 1.0,
+      "snr_clip": 5.0,
+      "min_loss_weight": 0.0,
+      "stabilization_level": 0,
+      "noise_level_convention": "clean_zero"
+    },
+    "tracker_fingerprint": "b22896ae621b1752eba531b757aa4cee8758c9087148c701d0dfe7eaaa95240e",
+    "frozen_fingerprints": {
+      "planner": "c72106387239e557a6f10e8b64741c1855193d07909f07d6deb83f69aff950de",
+      "tracker": "e6354ce2a3050ecaffd0270d1c95d02581cc6089024c0db95de4ef24427b4af6",
+      "diffusion_normalizer": "bfcf8ceb2b1cc17196e4b3f1f74dc3da11272e796944c45f8a7a47fd238a9847"
+    }
+  },
+  "required_controller_patch": "physhuman_steering_controller.patch",
+  "validation": {
+    "status": "passed",
+    "onnx_checker": "passed",
+    "onnxruntime": "1.30.0",
+    "sequential_calls": 17,
+    "bootstrap_calls": 5,
+    "replan_ticks": [
+      5,
+      10,
+      15
+    ],
+    "native_actor_parity": "passed",
+    "full_horizon_shared_noise_parity": "passed",
+    "reset_discards_stale_cache": true,
+    "actor_max_abs_error": 1.1920928955078125e-06,
+    "max_abs_error": {
+      "actions": 1.0728836059570312e-06,
+      "plan_cache_flat_out": 5.245208740234375e-06,
+      "plan_idx_out": 0.0,
+      "plan_valid_out": 0.0
+    },
+    "deployment_runtime": {
+      "status": "passed",
+      "onnx_runtime": "1.22.0",
+      "exec_steps": 5,
+      "sampling_timesteps": 20,
+      "onnx_sha256": "e1deb55e31c4709aa4c2d3bf6ddfe1fb26021756f5fbdbfa1334c69d3b1826aa",
+      "standalone_cpu": {
+        "passed": true,
+        "calls": 34,
+        "action_reset_replay_max_abs_error": 0.0,
+        "cache_reset_replay_max_abs_error": 0.0,
+        "latency": {
+          "all": {
+            "calls": 34,
+            "min_ms": 0.252239,
+            "median_ms": 0.313669,
+            "mean_ms": 11.6468,
+            "max_ms": 65.1645
+          },
+          "bootstrap": {
+            "calls": 10,
+            "min_ms": 0.254832,
+            "median_ms": 0.257913,
+            "mean_ms": 0.340971,
+            "max_ms": 0.687208
+          },
+          "replan": {
+            "calls": 6,
+            "min_ms": 62.6224,
+            "median_ms": 64.6682,
+            "mean_ms": 64.2686,
+            "max_ms": 65.1645
+          },
+          "cached": {
+            "calls": 18,
+            "min_ms": 0.252239,
+            "median_ms": 0.28884,
+            "mean_ms": 0.387222,
+            "max_ms": 0.663815
+          }
+        }
+      },
+      "actual_stateful_runner": {
+        "passed": true,
+        "calls": 34,
+        "virtual_reset_action_zeroed": true,
+        "runner_action_reset_replay_max_abs_error": 0.0,
+        "reference_cache_reset_replay_max_abs_error": 0.0,
+        "runner_reference_max_abs_error": 0.0,
+        "provider": "CPU fallback; isolated bundled ORT core without GPU plugins",
+        "fresh_measured_state_each_tick": true
+      },
+      "environment_smoke": {
+        "passed": true,
+        "real_observation_manager": true,
+        "observation_dim": 593,
+        "steering_command_offset": 480,
+        "gaussian_epsilon_offset": 484,
+        "noise_dim": 109,
+        "production_noise_max_abs": 3.64913,
+        "production_noise_mean": -0.0111381,
+        "production_noise_second_moment": 1.00096,
+        "heading_advance_once_per_step": true,
+        "heading_reset_before_observation_history": true,
+        "legacy_observation589_and_default_clipping_preserved": true
+      },
+      "limitations": [
+        "No closed-loop simulator or robot control was run.",
+        "Initial CUDA calls exceed the configured 20 ms control period; no startup warmup is implemented.",
+        "CPU replan calls exceed the configured 20 ms control period.",
+        "CUDA benchmark followed earlier CUDA tests; a fresh driver cache can add initialization time."
+      ],
+      "base_harness_regressions": {
+        "exec1_obs589": "passed34calls",
+        "exec5_obs1025": "passed34calls"
+      },
+      "selected_policy_provider": "cuda",
+      "cuda_use_tf32": false,
+      "actual_stateful_cuda_runner": {
+        "status": "passed",
+        "actual_stateful_runner": true,
+        "provider": "CUDAExecutionProvider",
+        "configured_policy_provider": "cuda",
+        "use_tf32": false,
+        "profiling_enabled": false,
+        "onnx_runtime": "1.22.0",
+        "sampling_timesteps": 20,
+        "exec_steps": 5,
+        "calls": 34,
+        "onnx_sha256": "e1deb55e31c4709aa4c2d3bf6ddfe1fb26021756f5fbdbfa1334c69d3b1826aa",
+        "provider_setup": "Normal installed ORT libraries, including TensorRT; explicit cuda selects the validated strict FP32 CUDA path directly.",
+        "cuda_arena_cap": "ORT default SIZE_MAX",
+        "runner_initialization_ms": 1663.15,
+        "finite_actions": true,
+        "expected_index_transitions": true,
+        "action_reset_replay_max_abs_error": 0.0,
+        "reference_cache_reset_replay_max_abs_error": 0.0,
+        "cpu_reference_action_max_abs_error": 1.90735e-06,
+        "cpu_reference_tolerance": 0.0002,
+        "cpu_reference_parity_passed": true,
+        "latency": {
+          "bootstrap": {
+            "calls": 10,
+            "min_ms": 0.254065,
+            "median_ms": 0.317311,
+            "max_ms": 276.235
+          },
+          "replan": {
+            "calls": 6,
+            "min_ms": 13.1601,
+            "median_ms": 13.4666,
+            "max_ms": 44.7031
+          },
+          "cached": {
+            "calls": 18,
+            "min_ms": 0.264541,
+            "median_ms": 0.4103785,
+            "max_ms": 2.108
+          }
+        },
+        "first_action_ms": 276.235,
+        "first_replan_ms": 44.7031,
+        "warm_replan_latency": {
+          "calls": 5,
+          "min_ms": 13.1601,
+          "median_ms": 13.3751,
+          "max_ms": 15.6884
+        },
+        "limitations": [
+          "Benchmark followed earlier CUDA tests; driver/JIT caches may have been warmed.",
+          "First earlier CUDA smoke took23.9 seconds for its first bootstrap action.",
+          "Initial phases exceed the20ms control period; startup warmup remains necessary for deadline-sensitive deployment.",
+          "No closed-loop simulator/robot validation."
+        ]
+      },
+      "cpu_cuda_shared_input_diagnostic": {
+        "status": "strict_fp32_passed_default_tf32_latent_parity_failed",
+        "onnx_runtime": "1.22.0",
+        "sampling_timesteps": 20,
+        "exec_steps": 5,
+        "calls_per_provider": 17,
+        "providers": [
+          "CPUExecutionProvider",
+          "CUDAExecutionProvider(use_tf32=1)",
+          "CUDAExecutionProvider(use_tf32=0)"
+        ],
+        "onnx_sha256": "e1deb55e31c4709aa4c2d3bf6ddfe1fb26021756f5fbdbfa1334c69d3b1826aa",
+        "recurrence": "Identical observation/cache/index/valid fed to all three providers each tick; shared CPU recurrence advances the fixture.",
+        "variants": {
+          "default_tf32": {
+            "action_max_abs_error": 1.90735e-06,
+            "cache_max_abs_error": 0.0101812,
+            "rounded_cache_code_changes": 1,
+            "first_action_divergence_tick_over_2e_4": -1
+          },
+          "strict_fp32": {
+            "action_max_abs_error": 1.90735e-06,
+            "cache_max_abs_error": 8.10623e-06,
+            "rounded_cache_code_changes": 0,
+            "first_action_divergence_tick_over_2e_4": -1
+          }
+        },
+        "first_default_tf32_cache_divergence_tick": 5,
+        "first_default_tf32_rounded_code_change_tick": 15,
+        "strict_fp32_zero_code_changes": true,
+        "limitations": [
+          "Shared-cache diagnostic isolates arithmetic drift and intentionally does not propagate GPU cache differences.",
+          "Separate actual-runner closed-recurrence checks verify strict FP32 parity.",
+          "No timing assertions or closed-loop simulator/robot validation."
+        ]
+      },
+      "focused_tests_passed": 109,
+      "provider_config_tests_passed": 13,
+      "controller_build": "passed; 2 packages in 41.6s",
+      "closed_loop_simulation_tested": false
+    }
+  },
+  "checkpoints": {
+    "diffusion": {
+      "path": "/home/wuyan/Documents/code/protomotions-uniphys/checkpoints/robogpc_uniphys_20k5/diffusion.ckpt",
+      "sha256": "3067cffaa4ebb6c78eae4be0a7535c29d302a04d89d60f5e9fe76d367c435b1f"
+    },
+    "tracker": {
+      "path": "/home/wuyan/Documents/code/protomotions-uniphys/checkpoints/robogpc_uniphys_20k5/tracker.pt",
+      "sha256": "ce3da71dfdac01f7c8b852a2aab96f912ce9ae6148750569ed75f7ad5fd56849"
+    },
+    "steering": {
+      "path": "/home/wuyan/Documents/code/protomotions-uniphys/checkpoints/robogpc_uniphys_20k5/steering.ckpt",
+      "sha256": "76be278027c29ad8b8bf0bcc5c592b7e1a9c0575a37ee74efe34194f1b0a0e30"
+    }
+  },
+  "deployment": {
+    "policy_provider": "cuda",
+    "policy_precision": "fp32",
+    "cuda_use_tf32": false,
+    "validation_report": "validation/runtime_validation.json"
+  }
+}

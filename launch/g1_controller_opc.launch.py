@@ -32,6 +32,10 @@ def generate_launch_description():
             description='Launch RViz with the g1_controller config'
         ),
 
+        DeclareLaunchArgument(
+            'camera', default_value='true',
+            description='Enable the shared RGB-D camera interface'
+        ),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource([
                 PathJoinSubstitution([
@@ -44,7 +48,8 @@ def generate_launch_description():
                 'simulation': simulation,
                 'network': network,
                 'pose_source_odom': pose_source_odom,
-                'rviz': rviz
+                'rviz': rviz,
+                'camera': LaunchConfiguration('camera')
             }.items()
         ),
 
@@ -68,14 +73,4 @@ def generate_launch_description():
             ])
         ),
         
-        # IncludeLaunchDescription(
-        #     PythonLaunchDescriptionSource([
-        #         PathJoinSubstitution([
-        #             FindPackageShare('realsense2_camera'),
-        #             'launch',
-        #             'rs_launch.py'
-        #         ])
-        #     ]),
-        #     launch_arguments={'enable_pointcloud': 'true'}.items()
-        # )
     ])

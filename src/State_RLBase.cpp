@@ -43,6 +43,8 @@ State_RLBase::State_RLBase(int state_mode, std::string state_string)
     auto policy_dir = package_path / cfg["policy_dir"].as<std::string>();
 
     auto deploy_cfg = YAML::LoadFile(policy_dir / "params" / "deploy.yaml");
+    const auto observations_cfg = deploy_cfg["observations"];
+    has_steering_command_observation_ = observations_cfg["steering_command"].IsDefined();
     measure_terrain_heights = deploy_cfg["height_map"]["measure_terrain_heights"].as<bool>();
     has_goal_command_observation_ = deploy_cfg["observations"]["goal_command"].IsDefined();
     if (deploy_cfg["goal_monitor"].IsDefined()) {
@@ -297,6 +299,39 @@ double State_RLBase::goal_distance_xy() const
         static_cast<double>(goal_w.x() - root_w.x()),
         static_cast<double>(goal_w.y() - root_w.y())
     );
+}
+
+void State_RLBase::publish_steering_velocitymarkers()
+{
+    if (!has_steering_command_observation_ || !velocitymarkers) {
+        return;
+    }
+
+    const auto command = env->get_steering_command();
+    const auto& data = env->robot->data;
+    const auto orientation = data.root_quat_w.normalized();
+    // Steering commands use yaw only. Measured velocity is in the full torso
+    // frame; rotate it before taking its horizontal components.
+    const Eigen::Vector3f command_w = isaaclab::yawQuaternion(orientation) *
+        Eigen::Vector3f(command[0], command[1], 0.0f);
+    const Eigen::Vector3f measured_w = orientation * data.root_lin_vel_b;
+
+    const auto set_arrow = [&data](auto& marker, const Eigen::Vector3f& velocity,
+                                  float height_offset) {
+        marker.points.resize(2);
+        marker.points[0].x = data.root_pos_w.x();
+        marker.points[0].y = data.root_pos_w.y();
+        marker.points[0].z = data.root_pos_w.z() + height_offset;
+        marker.points[1] = marker.points[0];
+        // One metre of arrow length represents one metre/second.
+        marker.points[1].x += velocity.x();
+        marker.points[1].y += velocity.y();
+    };
+    // Separate the arrows vertically so matching velocities remain visible.
+    set_arrow(velocitymarkers->cmd_marker_, command_w, 0.30f);
+    set_arrow(velocitymarkers->real_marker_, measured_w, 0.45f);
+    // Expire the steering arrows shortly after leaving this mode.
+    velocitymarkers->publish("odom", 0.3);
 }
 
 void State_RLBase::publish_goal_marker(double distance_xy)

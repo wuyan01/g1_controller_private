@@ -1,0 +1,46 @@
+{
+  "controller": "/home/wuyan/Workspaces/g1_ros_ws/src/g1_rsl/dependencies/g1_controller",
+  "profile": "config/config_robogpc.yaml",
+  "launch": "g1_controller_robogpc.launch.py",
+  "enabled_states": [
+    "Passive",
+    "FixStand",
+    "Velocity",
+    "Physhuman_RoboGPC"
+  ],
+  "sampling_timesteps": 10,
+  "exec_steps": 1,
+  "text_conditioning": false,
+  "controller_build": {
+    "passed": true,
+    "ros": "jazzy",
+    "packages": [
+      "g1_description",
+      "g1_controller"
+    ],
+    "isolated_install": "/home/wuyan/Documents/code/protomotions-uniphys/output/onnx/physhuman_robogpc/integration/build_validation/install"
+  },
+  "config_smoke": {
+    "passed": true,
+    "relative_path": true,
+    "absolute_path": true,
+    "default_preserved": true,
+    "model_paths_exist": true
+  },
+  "actual_runner_smoke": {
+    "passed": true,
+    "calls": 16,
+    "actions": 29,
+    "reset_replay_max_abs_error": 0.0,
+    "virtual_reset_action_zeroed": true,
+    "runtime": "Bundled ORT 1.22.0 core; GPU provider plugins omitted in isolated test environment"
+  },
+  "limitations": [
+    "No closed-loop control or robot communication was started.",
+    "No working NVIDIA driver on this host; normal GPU provider initialization crashed inside libonnxruntime_providers_cuda.so.",
+    "Original executable --help loads selected profile but aborts on exit due to existing Keyboard destructor leaving its thread joinable.",
+    "Previously measured single-thread DDIM10 CPU inference median 22.7 ms, max 28.6 ms, above the 20 ms policy period."
+  ],
+  "original_physhuman_deploy_sha256": "8f506e6b485801936b7b2aacb8f7401c4b6702335fbd32a248a395601266889e",
+  "onnx_sha256": "8c5d2b3dac151cc06ce952c1049c8c62612c5d17152de71c65c993746f99f8b5"
+}

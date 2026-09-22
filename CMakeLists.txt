@@ -207,4 +207,9 @@ ament_export_dependencies(
   grid_map_msgs
 )
 
+option(G1_BUILD_MUJOCO_CAMERA "Build the camera-enabled Unitree MuJoCo simulator" OFF)
+if(G1_BUILD_MUJOCO_CAMERA)
+  add_subdirectory(simulator_camera)
+endif()
+
 ament_package()

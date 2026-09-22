@@ -1,0 +1,57 @@
+{
+  "status": "passed",
+  "actual_stateful_runner": true,
+  "provider": "CUDAExecutionProvider",
+  "configured_policy_provider": "cuda",
+  "use_tf32": false,
+  "profiling_enabled": false,
+  "onnx_runtime": "1.22.0",
+  "sampling_timesteps": 20,
+  "exec_steps": 5,
+  "calls": 34,
+  "onnx_sha256": "e1deb55e31c4709aa4c2d3bf6ddfe1fb26021756f5fbdbfa1334c69d3b1826aa",
+  "provider_setup": "Normal installed ORT libraries, including TensorRT; explicit cuda selects the validated strict FP32 CUDA path directly.",
+  "cuda_arena_cap": "ORT default SIZE_MAX",
+  "runner_initialization_ms": 1663.15,
+  "finite_actions": true,
+  "expected_index_transitions": true,
+  "action_reset_replay_max_abs_error": 0.0,
+  "reference_cache_reset_replay_max_abs_error": 0.0,
+  "cpu_reference_action_max_abs_error": 1.90735e-06,
+  "cpu_reference_tolerance": 0.0002,
+  "cpu_reference_parity_passed": true,
+  "latency": {
+    "bootstrap": {
+      "calls": 10,
+      "min_ms": 0.254065,
+      "median_ms": 0.317311,
+      "max_ms": 276.235
+    },
+    "replan": {
+      "calls": 6,
+      "min_ms": 13.1601,
+      "median_ms": 13.4666,
+      "max_ms": 44.7031
+    },
+    "cached": {
+      "calls": 18,
+      "min_ms": 0.264541,
+      "median_ms": 0.4103785,
+      "max_ms": 2.108
+    }
+  },
+  "first_action_ms": 276.235,
+  "first_replan_ms": 44.7031,
+  "warm_replan_latency": {
+    "calls": 5,
+    "min_ms": 13.1601,
+    "median_ms": 13.3751,
+    "max_ms": 15.6884
+  },
+  "limitations": [
+    "Benchmark followed earlier CUDA tests; driver/JIT caches may have been warmed.",
+    "First earlier CUDA smoke took23.9 seconds for its first bootstrap action.",
+    "Initial phases exceed the20ms control period; startup warmup remains necessary for deadline-sensitive deployment.",
+    "No closed-loop simulator/robot validation."
+  ]
+}

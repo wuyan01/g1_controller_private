@@ -16,6 +16,9 @@ FSM:
     Physhuman_goal:
       id: 6
       type: RLBase
+    Physhuman_RoboGPC:
+      id: 7
+      type: RLBase
 
     Mimic_Dance_102: # uncomment to enable
       id: 101
@@ -45,6 +48,7 @@ FSM:
   FixStand:
     transitions: 
       Passive: back.on_pressed
+      Physhuman_RoboGPC: LB(2s) + up.on_pressed
       Velocity: A.on_pressed
       Physhuman: B.on_pressed
       Physhuman_Steer: X.on_pressed
@@ -76,6 +80,7 @@ FSM:
   Velocity:
     transitions: 
       Passive: back.on_pressed
+      Physhuman_RoboGPC: LB(2s) + up.on_pressed
       Physhuman: LB(2s) + B.on_pressed
       Physhuman_Steer: LB(2s) + X.on_pressed
       Physhuman_goal: LB(2s) + Y.on_pressed
@@ -90,6 +95,12 @@ FSM:
       Physhuman_Steer: LB(2s) + X.on_pressed
       Physhuman_goal: LB(2s) + Y.on_pressed
     policy_dir: config/policy/physhuman
+
+  Physhuman_RoboGPC:
+    transitions:
+      Passive: back.on_pressed
+      Velocity: LB(2s) + A.on_pressed
+    policy_dir: config/policy/physhuman_robogpc
 
   Physhuman_Steer:
     transitions:

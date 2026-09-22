@@ -1,0 +1,59 @@
+--- a/include/isaaclab/algorithms/algorithms.h
++++ b/include/isaaclab/algorithms/algorithms.h
+@@ -19,6 +19,7 @@
+ {
+ public:
+     virtual std::vector<float> act(std::unordered_map<std::string, std::vector<float>> obs) = 0;
++    virtual void reset() {}
+ 
+     std::vector<float> get_action()
+     {
+@@ -132,6 +133,34 @@
+             spdlog::info("[ORT-Stateful] Soft gate runtime enabled={}, threshold={}, sharpness={}, gate_floor={}",
+                          soft_gate_cfg_.enabled, soft_gate_cfg_.threshold, soft_gate_cfg_.sharpness, soft_gate_cfg_.gate_floor);
+         }
++    }
++
++    // Called on the policy thread before a new episode starts.
++    void reset() override
++    {
++        std::lock_guard<std::mutex> lock(act_mtx_);
++        std::fill(action.begin(), action.end(), 0.0f);
++        std::fill(plan_cache_flat_.begin(), plan_cache_flat_.end(), 0.0f);
++        plan_idx_.assign(1, 0);
++        plan_valid_.assign(1, 0.0f);
++        std::fill(prev_predicted_state_.begin(), prev_predicted_state_.end(), 0.0f);
++        prediction_valid_ = false;
++        risk_ema_ = 0.0f;
++        gate_ema_ = soft_gate_cfg_.initial_gate;
++        current_gate_ = soft_gate_cfg_.initial_gate;
++        last_risk_ = 0.0f;
++        last_projected_gravity_dev_ = 0.0f;
++        last_root_velocity_dev_ = 0.0f;
++        last_gate_raw_ = 0.0f;
++        last_base_action_norm_ = 0.0f;
++        last_residual_action_scaled_norm_ = 0.0f;
++        last_final_action_norm_ = 0.0f;
++        last_action_preview_ = "[]";
++        last_plan_idx_in_ = 0;
++        last_plan_valid_in_ = 0.0f;
++        last_plan_idx_out_ = 0;
++        last_plan_valid_out_ = 0.0f;
++        step_counter_ = 0;
+     }
+ 
+     std::vector<float> act(std::unordered_map<std::string, std::vector<float>> obs) override
+--- a/include/isaaclab/envs/manager_based_rl_env.h
++++ b/include/isaaclab/envs/manager_based_rl_env.h
+@@ -100,6 +100,11 @@
+         episode_length = 0;
+         robot->update();
+         initialize_goal_to_robot_if_unset();
++        if (alg) {
++            alg->reset();
++        }
++        // Preserve the action chunk size used to compute kActionRepeat.
++        std::fill(action.begin(), action.end(), 0.0f);
+         action_manager->reset();
+         observation_manager->reset();
+     }

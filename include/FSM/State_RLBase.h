@@ -80,6 +80,8 @@ public:
                     env->action_manager->processed_actions(),
                     action_update_time
                 );
+                // Read the command and measured state on their owning thread.
+                publish_steering_velocitymarkers();
                 const auto step_end = clock::now();
 
                 if (policy_delay_debug_enabled_) {
@@ -177,6 +179,7 @@ private:
     std::size_t control_freq_sample_count_ = 0;
     steady_clock::time_point control_freq_window_start_{};
     bool has_goal_command_observation_ = false;
+    bool has_steering_command_observation_ = false;
     double goal_reached_distance_ = 0.3;
     double goal_reached_hold_time_ = 0.5;
     std::size_t goal_distance_log_interval_ = 50;
@@ -197,6 +200,7 @@ private:
     void handle_text_command_msg(const std::string& key);
     void monitor_goal();
     void publish_goal_marker(double distance_xy);
+    void publish_steering_velocitymarkers();
     double goal_distance_xy() const;
     void gauge_control_frequency(const steady_clock::time_point& action_time)
     {
@@ -230,6 +234,9 @@ private:
 
     void republish_velocitymarkers()
     {
+        if (has_steering_command_observation_) {
+            return; // Published from the policy thread with a coherent state.
+        }
         if (!env->cfg["commands"].IsDefined() ||
             !env->cfg["commands"]["base_velocity"].IsDefined() ||
             !env->cfg["commands"]["base_velocity"]["ranges"].IsDefined()) {

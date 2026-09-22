@@ -64,10 +64,11 @@ int main(int argc, char** argv)
 
     // Get parameters
     std::string network = node->declare_parameter<std::string>("network", "lo");
+    const auto config_file = node->declare_parameter<std::string>("config_file", "config.yaml");
     std::cout << "Using network interface: " << network << std::endl;
 
     // Load parameters
-    auto vm = param::helper(argc, argv);
+    auto vm = param::helper(argc, argv, config_file);
 
     std::cout << " --- Unitree Robotics --- " << std::endl;
     std::cout << "     G1-29dof Controller  " << std::endl;

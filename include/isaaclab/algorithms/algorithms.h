@@ -6,6 +6,7 @@
 #include "onnxruntime_cxx_api.h"
 #include <iostream>
 #include <mutex>
+#include <memory>
 #include <numeric>
 #include <algorithm>
 #include <cmath>
@@ -19,6 +20,7 @@ class Algorithms
 {
 public:
     virtual std::vector<float> act(std::unordered_map<std::string, std::vector<float>> obs) = 0;
+    virtual void reset() {}
 
     std::vector<float> get_action()
     {
@@ -62,19 +64,37 @@ public:
     {
         env = Ort::Env(ORT_LOGGING_LEVEL_WARNING, "onnx_model");
 
-        #if defined(__aarch64__)
+        const auto provider = deploy_cfg_["policy_provider"].as<std::string>("auto");
+        if (provider == "cuda") {
+            session = create_session_cuda(model_path);
+            if (!session) {
+                throw std::runtime_error("Requested policy_provider=cuda could not initialize CUDA EP.");
+            }
+        } else if (provider == "cpu") {
             session = create_session_cpu(model_path);
-        #else
-            session = create_session_tensorrt(model_path, precision);
             if (!session) {
-                spdlog::warn("[ORT-Stateful] Falling back to CUDA EP");
-                session = create_session_cuda(model_path);
+                throw std::runtime_error("Requested policy_provider=cpu could not initialize CPU EP.");
             }
-            if (!session) {
-                spdlog::warn("[ORT-Stateful] Falling back to CPU EP");
+        } else if (provider == "auto") {
+            #if defined(__aarch64__)
                 session = create_session_cpu(model_path);
+            #else
+                session = create_session_tensorrt(model_path, precision);
+                if (!session) {
+                    spdlog::warn("[ORT-Stateful] Falling back to CUDA EP");
+                    session = create_session_cuda(model_path);
+                }
+                if (!session) {
+                    spdlog::warn("[ORT-Stateful] Falling back to CPU EP");
+                    session = create_session_cpu(model_path);
+                }
+            #endif
+            if (!session) {
+                throw std::runtime_error("No ONNX execution provider could initialize the stateful policy.");
             }
-        #endif
+        } else {
+            throw std::runtime_error("Unknown policy_provider '" + provider + "'; expected auto, cuda, or cpu.");
+        }
 
         for (size_t i = 0; i < session->GetInputCount(); ++i) {
             Ort::TypeInfo input_type = session->GetInputTypeInfo(i);
@@ -132,6 +152,34 @@ public:
             spdlog::info("[ORT-Stateful] Soft gate runtime enabled={}, threshold={}, sharpness={}, gate_floor={}",
                          soft_gate_cfg_.enabled, soft_gate_cfg_.threshold, soft_gate_cfg_.sharpness, soft_gate_cfg_.gate_floor);
         }
+    }
+
+    // Called on the policy thread before a new episode starts.
+    void reset() override
+    {
+        std::lock_guard<std::mutex> lock(act_mtx_);
+        std::fill(action.begin(), action.end(), 0.0f);
+        std::fill(plan_cache_flat_.begin(), plan_cache_flat_.end(), 0.0f);
+        plan_idx_.assign(1, 0);
+        plan_valid_.assign(1, 0.0f);
+        std::fill(prev_predicted_state_.begin(), prev_predicted_state_.end(), 0.0f);
+        prediction_valid_ = false;
+        risk_ema_ = 0.0f;
+        gate_ema_ = soft_gate_cfg_.initial_gate;
+        current_gate_ = soft_gate_cfg_.initial_gate;
+        last_risk_ = 0.0f;
+        last_projected_gravity_dev_ = 0.0f;
+        last_root_velocity_dev_ = 0.0f;
+        last_gate_raw_ = 0.0f;
+        last_base_action_norm_ = 0.0f;
+        last_residual_action_scaled_norm_ = 0.0f;
+        last_final_action_norm_ = 0.0f;
+        last_action_preview_ = "[]";
+        last_plan_idx_in_ = 0;
+        last_plan_valid_in_ = 0.0f;
+        last_plan_idx_out_ = 0;
+        last_plan_valid_out_ = 0.0f;
+        step_counter_ = 0;
     }
 
     std::vector<float> act(std::unordered_map<std::string, std::vector<float>> obs) override
@@ -625,15 +673,21 @@ private:
         try {
             Ort::SessionOptions so;
             so.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
-            OrtCUDAProviderOptions cuda{};
-            cuda.device_id = 0;
-            cuda.arena_extend_strategy = 0;
-            cuda.gpu_mem_limit = 0;
-            cuda.cudnn_conv_algo_search = OrtCudnnConvAlgoSearchExhaustive;
-            cuda.do_copy_in_default_stream = 1;
-            so.AppendExecutionProvider_CUDA(cuda);
+            const auto& api = Ort::GetApi();
+            OrtCUDAProviderOptionsV2* raw_cuda = nullptr;
+            Ort::ThrowOnError(api.CreateCUDAProviderOptions(&raw_cuda));
+            const auto release_cuda = [](OrtCUDAProviderOptionsV2* value) {
+                Ort::GetApi().ReleaseCUDAProviderOptions(value);
+            };
+            std::unique_ptr<OrtCUDAProviderOptionsV2, decltype(release_cuda)> cuda(raw_cuda, release_cuda);
+            // TF32 drift can cross a decoder FSQ rounding boundary. Preserve FP32.
+            // Keep the default SIZE_MAX arena limit; zero bytes cannot allocate.
+            const char* keys[] = {"use_tf32"};
+            const char* values[] = {"0"};
+            Ort::ThrowOnError(api.UpdateCUDAProviderOptions(cuda.get(), keys, values, 1));
+            so.AppendExecutionProvider_CUDA_V2(*cuda);
             auto sess = std::make_unique<Ort::Session>(env, model_path.c_str(), so);
-            spdlog::info("[ORT-Stateful] Using CUDA EP");
+            spdlog::info("[ORT-Stateful] Using CUDA EP (TF32 disabled)");
             return sess;
         } catch (const Ort::Exception& e) {
             spdlog::warn("[ORT-Stateful] CUDA EP failed: {}", e.what());

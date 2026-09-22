@@ -263,7 +263,7 @@ public:
     }
 
     std::mutex mapMutex_;
-    int numPoints_;
+    int numPoints_ = 0;
     Eigen::Vector3d basePosition_;
     bool terminateMapThread_ = true;
     std::unique_ptr<std::thread> mapThread_;

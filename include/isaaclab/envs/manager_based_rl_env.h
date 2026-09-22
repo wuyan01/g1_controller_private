@@ -6,6 +6,7 @@
 #include <eigen3/Eigen/Dense>
 #include <yaml-cpp/yaml.h>
 #include "isaaclab/manager/observation_manager.h"
+#include "isaaclab/envs/steering_command.h"
 #include "isaaclab/manager/action_manager.h"
 #include "isaaclab/assets/articulation/articulation.h"
 #include "isaaclab/algorithms/algorithms.h"
@@ -32,6 +33,16 @@ public:
     {
         // Parse configuration
         this->step_dt = cfg["step_dt"].as<float>();
+        const auto observations_cfg = cfg["observations"];
+        if (observations_cfg["steering_command"].IsDefined()) {
+            const auto params = observations_cfg["steering_command"]["params"];
+            steering_command_.configure(
+                params["max_speed"].as<float>(1.0f),
+                params["max_yaw_rate"].as<float>(1.0f),
+                params["deadzone"].as<float>(0.1f)
+            );
+            steering_command_enabled_ = true;
+        }
         robot->data.joint_ids_map = cfg["joint_ids_map"].as<std::vector<int>>();
         robot->data.joint_pos.resize(robot->data.joint_ids_map.size());
         robot->data.joint_vel.resize(robot->data.joint_ids_map.size());
@@ -64,6 +75,7 @@ public:
         }
 
         robot->update();
+        reset_steering_command();
         initialize_goal_to_robot_if_unset();
 
         // load managers
@@ -99,7 +111,13 @@ public:
         global_phase = 0;
         episode_length = 0;
         robot->update();
+        reset_steering_command();
         initialize_goal_to_robot_if_unset();
+        if (alg) {
+            alg->reset();
+        }
+        // Preserve the action chunk size used to compute kActionRepeat.
+        std::fill(action.begin(), action.end(), 0.0f);
         action_manager->reset();
         observation_manager->reset();
     }
@@ -109,6 +127,7 @@ public:
         const int kActionRepeat = action.size() / robot->data.joint_pos.size();
         const int action_idx = static_cast<int>(episode_length % kActionRepeat);
         robot->update();
+        update_steering_command();
         auto obs = observation_manager->compute();
 
         if (action_idx == 0) {
@@ -188,6 +207,7 @@ public:
         const int state_dim = noise_params["state_dim"].as<int>();
         const int noise_dim = num_future * state_dim;
         const float clip_noise = noise_params["clip_noise"].as<float>(1.0f);
+        const bool clip_enabled = noise_params["clip_enabled"].as<bool>(true);
 
         std::vector<float> noise(noise_dim, 0.0f);
         if (noise_mode_ == "zero") {
@@ -196,7 +216,9 @@ public:
 
         for (auto& v : noise) {
             v = noise_dist_(noise_gen_);
-            v = std::max(-clip_noise, std::min(clip_noise, v));
+            if (clip_enabled) {
+                v = std::max(-clip_noise, std::min(clip_noise, v));
+            }
         }
         return noise;
     }
@@ -207,6 +229,12 @@ public:
             return fixed_noise_;
         }
         return generate_noise_observation();
+    }
+
+    std::vector<float> get_steering_command() const
+    {
+        const auto& command = steering_command_.command();
+        return std::vector<float>(command.begin(), command.end());
     }
 
     float step_dt;
@@ -223,6 +251,36 @@ public:
     std::vector<float> action;
 
 private:
+    float robot_yaw() const
+    {
+        const auto q = robot->data.root_quat_w.normalized();
+        return std::atan2(2.0f * (q.w() * q.z() + q.x() * q.y()),
+                          1.0f - 2.0f * (q.y() * q.y() + q.z() * q.z()));
+    }
+
+    void reset_steering_command()
+    {
+        if (steering_command_enabled_) {
+            // Mode entry holds the current heading and clears old stick commands.
+            steering_command_.reset(robot_yaw());
+        }
+    }
+
+    void update_steering_command()
+    {
+        if (!steering_command_enabled_) {
+            return;
+        }
+        auto* joystick = robot->data.joystick;
+        steering_command_.update(
+            robot_yaw(), joystick ? joystick->ly() : 0.0f,
+            joystick ? -joystick->lx() : 0.0f,
+            joystick ? -joystick->rx() : 0.0f, step_dt
+        );
+    }
+
+    SteeringCommand steering_command_;
+    bool steering_command_enabled_ = false;
     std::string current_text_key_;
     mutable std::mutex text_key_mutex_;
     mutable std::mutex goal_mutex_;

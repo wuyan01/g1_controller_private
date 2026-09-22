@@ -1,0 +1,578 @@
+--- /dev/null
++++ b/config/config_robogpc_steering.yaml
+@@ -0,0 +1,105 @@
++# Standalone steering RoboGPC profile; use g1_controller_robogpc_steering.launch.py.
++# Only states with available policies are enabled.
++FSM:
++  _: # enabled fsms
++    Passive:
++      id: 1
++    FixStand:
++      id: 2
++    Velocity:
++      id: 3
++      type: RLBase
++    Physhuman_RoboGPC_Steering:
++      id: 7
++      type: RLBase
++
++  Passive:
++    transitions:
++      FixStand: start.on_pressed
++    mode: [
++      1, 1, 1, 1, 1, 1,
++      1, 1, 1, 1, 1, 1,
++      1, 1, 1,
++      1, 1, 1, 1, 1, 1, 1,
++      1, 1, 1, 1, 1, 1, 1,
++    ]
++    kd: [
++      3.0, 3.0, 3.0, 3.0, 3.0, 3.0, # left leg
++      3.0, 3.0, 3.0, 3.0, 3.0, 3.0, # right leg
++      3.0, 3.0, 3.0, # waist
++      3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, # left arm
++      3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, # right arm
++    ]
++
++  FixStand:
++    transitions:
++      Passive: back.on_pressed
++      Physhuman_RoboGPC_Steering: LB(2s) + up.on_pressed
++      Velocity: A.on_pressed
++    kp: [
++      100.0, 100.0, 100.0, 150.0, 40.0, 40.0, # left leg
++      100.0, 100.0, 100.0, 150.0, 40.0, 40.0, # right leg
++      200.0, 200.0, 200.0, # waist
++      40.0, 40.0, 40.0, 40.0, 40.0, 40.0, 40.0, # left arm
++      40.0, 40.0, 40.0, 40.0, 40.0, 40.0, 40.0, # right arm
++    ]
++    kd: [
++      2.0, 2.0, 2.0, 4.0, 2.0, 2.0, # left leg
++      2.0, 2.0, 2.0, 4.0, 2.0, 2.0, # right leg
++      5.0, 5.0, 5.0, # waist
++      10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, # left arm
++      10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, # right arm
++    ]
++    ts: [0.0, 3.0]
++    qs: [
++      [],
++      [ -0.1, 0.0, 0.0, 0.3, -0.2, 0.0, # left leg
++        -0.1, 0.0, 0.0, 0.3, -0.2, 0.0, # right leg
++        0.0, 0.0, 0.0, # waist
++        0.0, 0.25, 0.0, 0.97, 0.15, 0.0, 0.0, # left arm
++        0.0, -0.25, 0.0, 0.97, -0.15, 0.0, 0.0, # right arm
++      ]
++    ]
++  Velocity:
++    transitions:
++      Passive: back.on_pressed
++      Physhuman_RoboGPC_Steering: LB(2s) + up.on_pressed
++    policy_dir: config/policy/velocity
++
++  Physhuman_RoboGPC_Steering:
++    transitions:
++      Passive: back.on_pressed
++      Velocity: LB(2s) + A.on_pressed
++    policy_dir: config/policy/physhuman_robogpc_steering
++
++robot:
++  joint_names:
++    - left_hip_pitch_joint
++    - left_hip_roll_joint
++    - left_hip_yaw_joint
++    - left_knee_joint
++    - left_ankle_pitch_joint
++    - left_ankle_roll_joint
++    - right_hip_pitch_joint
++    - right_hip_roll_joint
++    - right_hip_yaw_joint
++    - right_knee_joint
++    - right_ankle_pitch_joint
++    - right_ankle_roll_joint
++    - waist_yaw_joint
++    - waist_roll_joint
++    - waist_pitch_joint
++    - left_shoulder_pitch_joint
++    - left_shoulder_roll_joint
++    - left_shoulder_yaw_joint
++    - left_elbow_joint
++    - left_wrist_roll_joint
++    - left_wrist_pitch_joint
++    - left_wrist_yaw_joint
++    - right_shoulder_pitch_joint
++    - right_shoulder_roll_joint
++    - right_shoulder_yaw_joint
++    - right_elbow_joint
++    - right_wrist_roll_joint
++    - right_wrist_pitch_joint
++    - right_wrist_yaw_joint
+--- a/include/FSM/State_RLBase.h
++++ b/include/FSM/State_RLBase.h
+@@ -80,6 +80,8 @@
+                     env->action_manager->processed_actions(),
+                     action_update_time
+                 );
++                // Read the command and measured state on their owning thread.
++                publish_steering_velocitymarkers();
+                 const auto step_end = clock::now();
+ 
+                 if (policy_delay_debug_enabled_) {
+@@ -177,6 +179,7 @@
+     std::size_t control_freq_sample_count_ = 0;
+     steady_clock::time_point control_freq_window_start_{};
+     bool has_goal_command_observation_ = false;
++    bool has_steering_command_observation_ = false;
+     double goal_reached_distance_ = 0.3;
+     double goal_reached_hold_time_ = 0.5;
+     std::size_t goal_distance_log_interval_ = 50;
+@@ -197,6 +200,7 @@
+     void handle_text_command_msg(const std::string& key);
+     void monitor_goal();
+     void publish_goal_marker(double distance_xy);
++    void publish_steering_velocitymarkers();
+     double goal_distance_xy() const;
+     void gauge_control_frequency(const steady_clock::time_point& action_time)
+     {
+@@ -230,6 +234,9 @@
+ 
+     void republish_velocitymarkers()
+     {
++        if (has_steering_command_observation_) {
++            return; // Published from the policy thread with a coherent state.
++        }
+         if (!env->cfg["commands"].IsDefined() ||
+             !env->cfg["commands"]["base_velocity"].IsDefined() ||
+             !env->cfg["commands"]["base_velocity"]["ranges"].IsDefined()) {
+--- a/include/isaaclab/algorithms/algorithms.h
++++ b/include/isaaclab/algorithms/algorithms.h
+@@ -6,6 +6,7 @@
+ #include "onnxruntime_cxx_api.h"
+ #include <iostream>
+ #include <mutex>
++#include <memory>
+ #include <numeric>
+ #include <algorithm>
+ #include <cmath>
+@@ -63,19 +64,37 @@
+     {
+         env = Ort::Env(ORT_LOGGING_LEVEL_WARNING, "onnx_model");
+ 
+-        #if defined(__aarch64__)
++        const auto provider = deploy_cfg_["policy_provider"].as<std::string>("auto");
++        if (provider == "cuda") {
++            session = create_session_cuda(model_path);
++            if (!session) {
++                throw std::runtime_error("Requested policy_provider=cuda could not initialize CUDA EP.");
++            }
++        } else if (provider == "cpu") {
+             session = create_session_cpu(model_path);
+-        #else
+-            session = create_session_tensorrt(model_path, precision);
+             if (!session) {
+-                spdlog::warn("[ORT-Stateful] Falling back to CUDA EP");
+-                session = create_session_cuda(model_path);
+-            }
++                throw std::runtime_error("Requested policy_provider=cpu could not initialize CPU EP.");
++            }
++        } else if (provider == "auto") {
++            #if defined(__aarch64__)
++                session = create_session_cpu(model_path);
++            #else
++                session = create_session_tensorrt(model_path, precision);
++                if (!session) {
++                    spdlog::warn("[ORT-Stateful] Falling back to CUDA EP");
++                    session = create_session_cuda(model_path);
++                }
++                if (!session) {
++                    spdlog::warn("[ORT-Stateful] Falling back to CPU EP");
++                    session = create_session_cpu(model_path);
++                }
++            #endif
+             if (!session) {
+-                spdlog::warn("[ORT-Stateful] Falling back to CPU EP");
+-                session = create_session_cpu(model_path);
+-            }
+-        #endif
++                throw std::runtime_error("No ONNX execution provider could initialize the stateful policy.");
++            }
++        } else {
++            throw std::runtime_error("Unknown policy_provider '" + provider + "'; expected auto, cuda, or cpu.");
++        }
+ 
+         for (size_t i = 0; i < session->GetInputCount(); ++i) {
+             Ort::TypeInfo input_type = session->GetInputTypeInfo(i);
+@@ -654,15 +673,21 @@
+         try {
+             Ort::SessionOptions so;
+             so.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+-            OrtCUDAProviderOptions cuda{};
+-            cuda.device_id = 0;
+-            cuda.arena_extend_strategy = 0;
+-            cuda.gpu_mem_limit = 0;
+-            cuda.cudnn_conv_algo_search = OrtCudnnConvAlgoSearchExhaustive;
+-            cuda.do_copy_in_default_stream = 1;
+-            so.AppendExecutionProvider_CUDA(cuda);
++            const auto& api = Ort::GetApi();
++            OrtCUDAProviderOptionsV2* raw_cuda = nullptr;
++            Ort::ThrowOnError(api.CreateCUDAProviderOptions(&raw_cuda));
++            const auto release_cuda = [](OrtCUDAProviderOptionsV2* value) {
++                Ort::GetApi().ReleaseCUDAProviderOptions(value);
++            };
++            std::unique_ptr<OrtCUDAProviderOptionsV2, decltype(release_cuda)> cuda(raw_cuda, release_cuda);
++            // TF32 drift can cross a decoder FSQ rounding boundary. Preserve FP32.
++            // Keep the default SIZE_MAX arena limit; zero bytes cannot allocate.
++            const char* keys[] = {"use_tf32"};
++            const char* values[] = {"0"};
++            Ort::ThrowOnError(api.UpdateCUDAProviderOptions(cuda.get(), keys, values, 1));
++            so.AppendExecutionProvider_CUDA_V2(*cuda);
+             auto sess = std::make_unique<Ort::Session>(env, model_path.c_str(), so);
+-            spdlog::info("[ORT-Stateful] Using CUDA EP");
++            spdlog::info("[ORT-Stateful] Using CUDA EP (TF32 disabled)");
+             return sess;
+         } catch (const Ort::Exception& e) {
+             spdlog::warn("[ORT-Stateful] CUDA EP failed: {}", e.what());
+--- a/include/isaaclab/envs/manager_based_rl_env.h
++++ b/include/isaaclab/envs/manager_based_rl_env.h
+@@ -6,6 +6,7 @@
+ #include <eigen3/Eigen/Dense>
+ #include <yaml-cpp/yaml.h>
+ #include "isaaclab/manager/observation_manager.h"
++#include "isaaclab/envs/steering_command.h"
+ #include "isaaclab/manager/action_manager.h"
+ #include "isaaclab/assets/articulation/articulation.h"
+ #include "isaaclab/algorithms/algorithms.h"
+@@ -32,6 +33,16 @@
+     {
+         // Parse configuration
+         this->step_dt = cfg["step_dt"].as<float>();
++        const auto observations_cfg = cfg["observations"];
++        if (observations_cfg["steering_command"].IsDefined()) {
++            const auto params = observations_cfg["steering_command"]["params"];
++            steering_command_.configure(
++                params["max_speed"].as<float>(1.0f),
++                params["max_yaw_rate"].as<float>(1.0f),
++                params["deadzone"].as<float>(0.1f)
++            );
++            steering_command_enabled_ = true;
++        }
+         robot->data.joint_ids_map = cfg["joint_ids_map"].as<std::vector<int>>();
+         robot->data.joint_pos.resize(robot->data.joint_ids_map.size());
+         robot->data.joint_vel.resize(robot->data.joint_ids_map.size());
+@@ -64,6 +75,7 @@
+         }
+ 
+         robot->update();
++        reset_steering_command();
+         initialize_goal_to_robot_if_unset();
+ 
+         // load managers
+@@ -99,6 +111,7 @@
+         global_phase = 0;
+         episode_length = 0;
+         robot->update();
++        reset_steering_command();
+         initialize_goal_to_robot_if_unset();
+         if (alg) {
+             alg->reset();
+@@ -114,6 +127,7 @@
+         const int kActionRepeat = action.size() / robot->data.joint_pos.size();
+         const int action_idx = static_cast<int>(episode_length % kActionRepeat);
+         robot->update();
++        update_steering_command();
+         auto obs = observation_manager->compute();
+ 
+         if (action_idx == 0) {
+@@ -193,6 +207,7 @@
+         const int state_dim = noise_params["state_dim"].as<int>();
+         const int noise_dim = num_future * state_dim;
+         const float clip_noise = noise_params["clip_noise"].as<float>(1.0f);
++        const bool clip_enabled = noise_params["clip_enabled"].as<bool>(true);
+ 
+         std::vector<float> noise(noise_dim, 0.0f);
+         if (noise_mode_ == "zero") {
+@@ -201,7 +216,9 @@
+ 
+         for (auto& v : noise) {
+             v = noise_dist_(noise_gen_);
+-            v = std::max(-clip_noise, std::min(clip_noise, v));
++            if (clip_enabled) {
++                v = std::max(-clip_noise, std::min(clip_noise, v));
++            }
+         }
+         return noise;
+     }
+@@ -212,6 +229,12 @@
+             return fixed_noise_;
+         }
+         return generate_noise_observation();
++    }
++
++    std::vector<float> get_steering_command() const
++    {
++        const auto& command = steering_command_.command();
++        return std::vector<float>(command.begin(), command.end());
+     }
+ 
+     float step_dt;
+@@ -228,6 +251,36 @@
+     std::vector<float> action;
+ 
+ private:
++    float robot_yaw() const
++    {
++        const auto q = robot->data.root_quat_w.normalized();
++        return std::atan2(2.0f * (q.w() * q.z() + q.x() * q.y()),
++                          1.0f - 2.0f * (q.y() * q.y() + q.z() * q.z()));
++    }
++
++    void reset_steering_command()
++    {
++        if (steering_command_enabled_) {
++            // Mode entry holds the current heading and clears old stick commands.
++            steering_command_.reset(robot_yaw());
++        }
++    }
++
++    void update_steering_command()
++    {
++        if (!steering_command_enabled_) {
++            return;
++        }
++        auto* joystick = robot->data.joystick;
++        steering_command_.update(
++            robot_yaw(), joystick ? joystick->ly() : 0.0f,
++            joystick ? -joystick->lx() : 0.0f,
++            joystick ? -joystick->rx() : 0.0f, step_dt
++        );
++    }
++
++    SteeringCommand steering_command_;
++    bool steering_command_enabled_ = false;
+     std::string current_text_key_;
+     mutable std::mutex text_key_mutex_;
+     mutable std::mutex goal_mutex_;
+--- a/include/isaaclab/envs/mdp/observations/observations.h
++++ b/include/isaaclab/envs/mdp/observations/observations.h
+@@ -134,6 +134,13 @@
+     return obs;
+ }
+ 
++// Raw heading-local velocity xy and independent unit facing direction xy.
++// Integration occurs once in env->step(); observation reads never advance it.
++REGISTER_OBSERVATION(steering_command)
++{
++    return env->get_steering_command();
++}
++
+ REGISTER_OBSERVATION(goal_command)
+ {
+     auto & asset = env->robot;
+--- /dev/null
++++ b/include/isaaclab/envs/steering_command.h
+@@ -0,0 +1,76 @@
++// Joystick command adapter for the RoboGPC noise-steering policy.
++#pragma once
++
++#include <algorithm>
++#include <array>
++#include <cmath>
++#include <stdexcept>
++
++namespace isaaclab
++{
++
++class SteeringCommand
++{
++public:
++    void configure(float max_speed, float max_yaw_rate, float deadzone)
++    {
++        if (!std::isfinite(max_speed) || max_speed < 0.0f ||
++            !std::isfinite(max_yaw_rate) || max_yaw_rate < 0.0f ||
++            !std::isfinite(deadzone) || deadzone < 0.0f || deadzone >= 1.0f) {
++            throw std::invalid_argument("Invalid steering joystick limits or deadzone");
++        }
++        max_speed_ = max_speed;
++        max_yaw_rate_ = max_yaw_rate;
++        deadzone_ = deadzone;
++    }
++
++    void reset(float measured_yaw)
++    {
++        heading_target_ = wrap(measured_yaw);
++        command_ = {0.0f, 0.0f, 1.0f, 0.0f};
++    }
++
++    // Inputs are forward, left, and counterclockwise turn, in [-1, 1].
++    // Call exactly once per policy tick, including cached latent-plan ticks.
++    void update(float measured_yaw, float forward, float left, float turn_left, float dt)
++    {
++        if (!std::isfinite(measured_yaw) || !std::isfinite(forward) ||
++            !std::isfinite(left) || !std::isfinite(turn_left) ||
++            !std::isfinite(dt) || dt <= 0.0f) {
++            throw std::invalid_argument("Nonfinite steering input or invalid control period");
++        }
++
++        const float magnitude = std::hypot(forward, left);
++        float scale = 0.0f;
++        if (magnitude > deadzone_) {
++            // Radial scaling prevents diagonal input from exceeding max_speed.
++            const float speed_fraction = (std::min(magnitude, 1.0f) - deadzone_) /
++                                         (1.0f - deadzone_);
++            scale = max_speed_ * speed_fraction / magnitude;
++        }
++        command_[0] = forward * scale;
++        command_[1] = left * scale;
++
++        const float turn_magnitude = std::min(std::abs(turn_left), 1.0f);
++        const float turn_fraction = turn_magnitude > deadzone_
++            ? std::copysign((turn_magnitude - deadzone_) / (1.0f - deadzone_), turn_left)
++            : 0.0f;
++        heading_target_ = wrap(heading_target_ + turn_fraction * max_yaw_rate_ * dt);
++        const float heading_error = heading_target_ - measured_yaw;
++        command_[2] = std::cos(heading_error);
++        command_[3] = std::sin(heading_error);
++    }
++
++    const std::array<float, 4>& command() const { return command_; }
++
++private:
++    static float wrap(float angle) { return std::atan2(std::sin(angle), std::cos(angle)); }
++
++    float max_speed_ = 1.0f;
++    float max_yaw_rate_ = 1.0f;
++    float deadzone_ = 0.1f;
++    float heading_target_ = 0.0f;
++    std::array<float, 4> command_{0.0f, 0.0f, 1.0f, 0.0f};
++};
++
++} // namespace isaaclab
+--- a/include/publisher.h
++++ b/include/publisher.h
+@@ -87,14 +87,15 @@
+         marker_pub_ = node->create_publisher<visualization_msgs::msg::MarkerArray>(velocitymarkers_topic, queue_size);
+     }
+ 
+-    void publish()
++    void publish(const std::string& frame_id = "torso_link", double lifetime_seconds = 0.0)
+     {
+         std::lock_guard<std::mutex> lock(mutex_);
+ 
+         marker_array_.markers.clear();
+         
+         cmd_marker_.header.stamp = rclcpp::Time(0, 0, clock_->get_clock_type());
+-        cmd_marker_.header.frame_id = "torso_link";
++        cmd_marker_.header.frame_id = frame_id;
++        cmd_marker_.lifetime = rclcpp::Duration::from_seconds(lifetime_seconds);
+         cmd_marker_.ns = "cmd_vel";
+         cmd_marker_.id = 0;
+         cmd_marker_.type = visualization_msgs::msg::Marker::ARROW;
+@@ -116,7 +117,8 @@
+ 
+ 
+         real_marker_.header.stamp = rclcpp::Time(0, 0, clock_->get_clock_type());
+-        real_marker_.header.frame_id = "torso_link";
++        real_marker_.header.frame_id = frame_id;
++        real_marker_.lifetime = rclcpp::Duration::from_seconds(lifetime_seconds);
+         real_marker_.ns = "real_vel";
+         real_marker_.id = 1;
+         real_marker_.type = visualization_msgs::msg::Marker::ARROW;
+--- /dev/null
++++ b/launch/g1_controller_robogpc_steering.launch.py
+@@ -0,0 +1,46 @@
++from launch import LaunchDescription
++from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
++from launch.launch_description_sources import PythonLaunchDescriptionSource
++from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
++from launch_ros.substitutions import FindPackageShare
++
++
++def generate_launch_description():
++    return LaunchDescription([
++        DeclareLaunchArgument(
++            'simulation',
++            default_value='true',
++            description='Simulation mode'
++        ),
++        DeclareLaunchArgument(
++            'network',
++            default_value='lo',
++            description='Network interface'
++        ),
++        DeclareLaunchArgument(
++            'pose_source_odom',
++            default_value='/g1_controller/sport_mode/odom',
++            description='Topic for pose source odometry'
++        ),
++        DeclareLaunchArgument(
++            'rviz',
++            default_value='true',
++            description='Launch RViz with the g1_controller config'
++        ),
++        IncludeLaunchDescription(
++            PythonLaunchDescriptionSource([
++                PathJoinSubstitution([
++                    FindPackageShare('g1_controller'),
++                    'launch',
++                    'g1_controller_sim.launch.py'
++                ])
++            ]),
++            launch_arguments={
++                'config_file': 'config_robogpc_steering.yaml',
++                'simulation': LaunchConfiguration('simulation'),
++                'network': LaunchConfiguration('network'),
++                'pose_source_odom': LaunchConfiguration('pose_source_odom'),
++                'rviz': LaunchConfiguration('rviz'),
++            }.items()
++        ),
++    ])
+--- a/src/State_RLBase.cpp
++++ b/src/State_RLBase.cpp
+@@ -43,6 +43,8 @@
+     auto policy_dir = package_path / cfg["policy_dir"].as<std::string>();
+ 
+     auto deploy_cfg = YAML::LoadFile(policy_dir / "params" / "deploy.yaml");
++    const auto observations_cfg = deploy_cfg["observations"];
++    has_steering_command_observation_ = observations_cfg["steering_command"].IsDefined();
+     measure_terrain_heights = deploy_cfg["height_map"]["measure_terrain_heights"].as<bool>();
+     has_goal_command_observation_ = deploy_cfg["observations"]["goal_command"].IsDefined();
+     if (deploy_cfg["goal_monitor"].IsDefined()) {
+@@ -299,6 +301,39 @@
+     );
+ }
+ 
++void State_RLBase::publish_steering_velocitymarkers()
++{
++    if (!has_steering_command_observation_ || !velocitymarkers) {
++        return;
++    }
++
++    const auto command = env->get_steering_command();
++    const auto& data = env->robot->data;
++    const auto orientation = data.root_quat_w.normalized();
++    // Steering commands use yaw only. Measured velocity is in the full torso
++    // frame; rotate it before taking its horizontal components.
++    const Eigen::Vector3f command_w = isaaclab::yawQuaternion(orientation) *
++        Eigen::Vector3f(command[0], command[1], 0.0f);
++    const Eigen::Vector3f measured_w = orientation * data.root_lin_vel_b;
++
++    const auto set_arrow = [&data](auto& marker, const Eigen::Vector3f& velocity,
++                                  float height_offset) {
++        marker.points.resize(2);
++        marker.points[0].x = data.root_pos_w.x();
++        marker.points[0].y = data.root_pos_w.y();
++        marker.points[0].z = data.root_pos_w.z() + height_offset;
++        marker.points[1] = marker.points[0];
++        // One metre of arrow length represents one metre/second.
++        marker.points[1].x += velocity.x();
++        marker.points[1].y += velocity.y();
++    };
++    // Separate the arrows vertically so matching velocities remain visible.
++    set_arrow(velocitymarkers->cmd_marker_, command_w, 0.30f);
++    set_arrow(velocitymarkers->real_marker_, measured_w, 0.45f);
++    // Expire the steering arrows shortly after leaving this mode.
++    velocitymarkers->publish("odom", 0.3);
++}
++
+ void State_RLBase::publish_goal_marker(double distance_xy)
+ {
+     if (!goal_marker_pub_) {

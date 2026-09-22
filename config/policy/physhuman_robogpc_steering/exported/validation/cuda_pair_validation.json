@@ -1,0 +1,36 @@
+{
+  "status": "strict_fp32_passed_default_tf32_latent_parity_failed",
+  "onnx_runtime": "1.22.0",
+  "sampling_timesteps": 20,
+  "exec_steps": 5,
+  "calls_per_provider": 17,
+  "providers": [
+    "CPUExecutionProvider",
+    "CUDAExecutionProvider(use_tf32=1)",
+    "CUDAExecutionProvider(use_tf32=0)"
+  ],
+  "onnx_sha256": "e1deb55e31c4709aa4c2d3bf6ddfe1fb26021756f5fbdbfa1334c69d3b1826aa",
+  "recurrence": "Identical observation/cache/index/valid fed to all three providers each tick; shared CPU recurrence advances the fixture.",
+  "variants": {
+    "default_tf32": {
+      "action_max_abs_error": 1.90735e-06,
+      "cache_max_abs_error": 0.0101812,
+      "rounded_cache_code_changes": 1,
+      "first_action_divergence_tick_over_2e_4": -1
+    },
+    "strict_fp32": {
+      "action_max_abs_error": 1.90735e-06,
+      "cache_max_abs_error": 8.10623e-06,
+      "rounded_cache_code_changes": 0,
+      "first_action_divergence_tick_over_2e_4": -1
+    }
+  },
+  "first_default_tf32_cache_divergence_tick": 5,
+  "first_default_tf32_rounded_code_change_tick": 15,
+  "strict_fp32_zero_code_changes": true,
+  "limitations": [
+    "Shared-cache diagnostic isolates arithmetic drift and intentionally does not propagate GPU cache differences.",
+    "Separate actual-runner closed-recurrence checks verify strict FP32 parity.",
+    "No timing assertions or closed-loop simulator/robot validation."
+  ]
+}

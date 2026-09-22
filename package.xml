@@ -28,8 +28,12 @@
   <depend>grid_map_ros</depend>
   <depend>grid_map_msgs</depend>
   <depend>ament_index_cpp</depend>
+  <exec_depend>g1_description</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
+  <exec_depend>realsense2_camera</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+  <exec_depend>rviz_default_plugins</exec_depend>
 
   <!-- System libraries your CMakeLists finds/resolves -->
   <depend>boost</depend>

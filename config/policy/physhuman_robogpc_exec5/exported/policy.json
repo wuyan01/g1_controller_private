@@ -1,0 +1,246 @@
+{
+  "policy": "physhuman_robogpc_exec5",
+  "source_config": "/home/wuyan/Workspaces/g1_ros_ws/src/g1_rsl/dependencies/g1_controller/config/policy/physhuman/params/deploy.yaml",
+  "source_config_sha256": "8f506e6b485801936b7b2aacb8f7401c4b6702335fbd32a248a395601266889e",
+  "checkpoint": "/home/wuyan/Documents/code/protomotions-uniphys/checkpoints/robogpc_uniphys_20k5/diffusion.ckpt",
+  "checkpoint_step": 72750,
+  "checkpoint_sha256": "3067cffaa4ebb6c78eae4be0a7535c29d302a04d89d60f5e9fe76d367c435b1f",
+  "tracker_fingerprint": "b22896ae621b1752eba531b757aa4cee8758c9087148c701d0dfe7eaaa95240e",
+  "onnx_sha256": "9c69383eec00f2391282f65c76b4632509400c32acff2d065daa96598d561917",
+  "onnx_ir_version": 8,
+  "opset": 17,
+  "exec_steps": 5,
+  "sampling_timesteps": 10,
+  "fps": 50.0,
+  "ddim_schedule_rows_per_plan": 14,
+  "inputs": {
+    "obs": [
+      1,
+      1025
+    ],
+    "plan_cache_flat": [
+      1,
+      160
+    ],
+    "plan_idx": [
+      1
+    ],
+    "plan_valid": [
+      1
+    ]
+  },
+  "input_dtypes": {
+    "obs": "float32",
+    "plan_cache_flat": "float32",
+    "plan_idx": "int64",
+    "plan_valid": "float32"
+  },
+  "outputs": {
+    "actions": [
+      1,
+      29
+    ],
+    "plan_cache_flat_out": [
+      1,
+      160
+    ],
+    "plan_idx_out": [
+      1
+    ],
+    "plan_valid_out": [
+      1
+    ]
+  },
+  "observation_layout": {
+    "base_lin_vel": {
+      "offset": 0,
+      "width": 3,
+      "history_length": 5
+    },
+    "base_ang_vel": {
+      "offset": 15,
+      "width": 3,
+      "history_length": 5
+    },
+    "projected_gravity": {
+      "offset": 30,
+      "width": 3,
+      "history_length": 5
+    },
+    "joint_pos_rel": {
+      "offset": 45,
+      "width": 29,
+      "history_length": 5
+    },
+    "joint_vel_rel": {
+      "offset": 190,
+      "width": 29,
+      "history_length": 5
+    },
+    "last_action": {
+      "offset": 335,
+      "width": 29,
+      "history_length": 5
+    },
+    "noise": {
+      "offset": 480,
+      "width": 545,
+      "history_length": 1
+    }
+  },
+  "history_order": "term-major; oldest to newest within each term",
+  "text_conditioning": false,
+  "ignored_observations": [
+    "base_lin_vel"
+  ],
+  "noise": "545 externally supplied clipped Gaussian values; no internal RNG",
+  "action_semantics": "raw RoboGPC actions in checkpoint/native Isaac joint order",
+  "dof_names": [
+    "left_hip_pitch_joint",
+    "right_hip_pitch_joint",
+    "waist_yaw_joint",
+    "left_hip_roll_joint",
+    "right_hip_roll_joint",
+    "waist_roll_joint",
+    "left_hip_yaw_joint",
+    "right_hip_yaw_joint",
+    "waist_pitch_joint",
+    "left_knee_joint",
+    "right_knee_joint",
+    "left_shoulder_pitch_joint",
+    "right_shoulder_pitch_joint",
+    "left_ankle_pitch_joint",
+    "right_ankle_pitch_joint",
+    "left_shoulder_roll_joint",
+    "right_shoulder_roll_joint",
+    "left_ankle_roll_joint",
+    "right_ankle_roll_joint",
+    "left_shoulder_yaw_joint",
+    "right_shoulder_yaw_joint",
+    "left_elbow_joint",
+    "right_elbow_joint",
+    "left_wrist_roll_joint",
+    "right_wrist_roll_joint",
+    "left_wrist_pitch_joint",
+    "right_wrist_pitch_joint",
+    "left_wrist_yaw_joint",
+    "right_wrist_yaw_joint"
+  ],
+  "cache_semantics": "last 5 emitted continuous latents, matched with next call's resulting measured states; followed by 5 planned continuous latents decoded against fresh measured state",
+  "cache_layout": {
+    "executed_latent_history": [
+      0,
+      80
+    ],
+    "latent_plan": [
+      80,
+      160
+    ]
+  },
+  "plan_idx_semantics": "bootstrap count 0..4, then 5+next_plan_phase (5 replans; 6..9 reuse)",
+  "conditional_diffusion": true,
+  "plan_valid_semantics": "cache initialized flag; 0 restarts bootstrap and ignores input cache/index",
+  "bootstrap": {
+    "type": "static_default_pose_tracker_encoder",
+    "steps": 5,
+    "bounded_latent": [
+      -2.8601527214050293,
+      1.1431736946105957,
+      -0.58716881275177,
+      0.5336783528327942,
+      -1.7168288230895996,
+      -1.5163477659225464,
+      1.7236473560333252,
+      -2.121793031692505,
+      -1.861129641532898,
+      -0.45241445302963257,
+      -2.461498260498047,
+      -2.5058274269104004,
+      -0.6648712158203125,
+      -1.4536726474761963,
+      3.3130524158477783,
+      0.5227459073066711
+    ],
+    "measured_state_decoder": true
+  },
+  "required_controller_patch": "physhuman_runner_reset.patch",
+  "validation": {
+    "status": "passed",
+    "onnx_checker": "passed",
+    "onnxruntime": "1.30.0",
+    "provider": "CPUExecutionProvider",
+    "sequential_calls": 17,
+    "bootstrap_calls": 5,
+    "reset_discards_stale_cache": true,
+    "replan_ticks": [
+      5,
+      10,
+      15
+    ],
+    "full_horizon_prefix_parity": "passed",
+    "native_policy_parity": "passed",
+    "max_abs_error": {
+      "actions": 9.5367431640625e-07,
+      "plan_cache_flat_out": 9.298324584960938e-06,
+      "plan_idx_out": 0.0,
+      "plan_valid_out": 0.0
+    },
+    "deployment_runtime": {
+      "onnx_runtime": "1.22.0",
+      "exec_steps": 5,
+      "sampling_timesteps": 10,
+      "standalone_cpu": {
+        "passed": true,
+        "calls": 34,
+        "expected_index_sequence": true,
+        "action_reset_replay_max_abs_error": 0.0,
+        "cache_reset_replay_max_abs_error": 0.0,
+        "latency": {
+          "all": {
+            "calls": 34,
+            "min_ms": 0.251751,
+            "median_ms": 0.387186,
+            "mean_ms": 7.40852,
+            "max_ms": 41.8507
+          },
+          "bootstrap": {
+            "calls": 10,
+            "min_ms": 0.251751,
+            "median_ms": 0.3766,
+            "mean_ms": 0.470706,
+            "max_ms": 0.782787
+          },
+          "replan": {
+            "calls": 6,
+            "min_ms": 36.3872,
+            "median_ms": 40.482,
+            "mean_ms": 40.0183,
+            "max_ms": 41.8507
+          },
+          "cached": {
+            "calls": 18,
+            "min_ms": 0.252393,
+            "median_ms": 0.310227,
+            "mean_ms": 0.392929,
+            "max_ms": 0.736384
+          }
+        }
+      },
+      "actual_stateful_runner": {
+        "passed": true,
+        "calls": 34,
+        "virtual_reset_action_zeroed": true,
+        "runner_action_reset_replay_max_abs_error": 0.0,
+        "reference_cache_reset_replay_max_abs_error": 0.0,
+        "runner_reference_max_abs_error": 0.0,
+        "provider": "CPU fallback; isolated bundled ORT core without GPU plugins",
+        "fresh_measured_state_each_tick": true
+      },
+      "limitations": [
+        "No closed-loop simulator or robot control was run.",
+        "GPU providers were not validated.",
+        "CPU replan calls exceed the configured 20 ms control period."
+      ]
+    }
+  }
+}

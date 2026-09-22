@@ -45,7 +45,7 @@ inline std::filesystem::path config_dir;
 inline YAML::Node config;
 
 /* ---------- config.yaml ---------- */
-inline void load_config_file()
+inline void load_config_file(const std::string& config_file = "config.yaml")
 {
     try {
         proj_dir = ament_index_cpp::get_package_share_directory("g1_controller");
@@ -55,18 +55,22 @@ inline void load_config_file()
     }
     
     config_dir = proj_dir / "config";
+    std::filesystem::path config_path(config_file);
+    if (config_path.is_relative()) {
+        config_path = config_dir / config_path;
+    }
 
     try {
-        std::string config_file = (config_dir / "config.yaml").string();
-        if(std::filesystem::exists(config_file))
+        if(std::filesystem::exists(config_path))
         {
-            config = YAML::LoadFile(config_file);
+            config = YAML::LoadFile(config_path.string());
+            spdlog::info("Loaded controller config: {}", config_path.string());
         } else {
-             spdlog::error("Config file not found: {}", config_file);
+             spdlog::error("Config file not found: {}", config_path.string());
              exit(1);
         }
     } catch (const YAML::BadFile& e) {
-        spdlog::error("Failed to load config.yaml: {}", e.what());
+        spdlog::error("Failed to load {}: {}", config_path.string(), e.what());
         exit(1);
     }
 }
@@ -75,9 +79,9 @@ inline void load_config_file()
 namespace po = boost::program_options;
 
 //※ This function must be called at the beginning of main() function
-inline po::variables_map helper(int argc, char** argv) 
+inline po::variables_map helper(int argc, char** argv, const std::string& config_file = "config.yaml")
 {
-    load_config_file();
+    load_config_file(config_file);
 
     po::options_description desc("Unitree Controller");
     desc.add_options()
