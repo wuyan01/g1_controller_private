@@ -7,6 +7,8 @@ from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
     return LaunchDescription([
+        DeclareLaunchArgument('steering_ros_enabled', default_value='false',
+                              description='Enable Codex ROS steering input'),
         DeclareLaunchArgument(
             'simulation',
             default_value='true',
@@ -46,6 +48,7 @@ def generate_launch_description():
             launch_arguments={
                 'config_file': 'config_robogpc_steering.yaml',
                 'simulation': LaunchConfiguration('simulation'),
+                'steering_ros_enabled': LaunchConfiguration('steering_ros_enabled'),
                 'network': LaunchConfiguration('network'),
                 'pose_source_odom': LaunchConfiguration('pose_source_odom'),
                 'rviz': LaunchConfiguration('rviz'),

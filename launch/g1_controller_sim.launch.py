@@ -9,6 +9,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch.conditions import IfCondition
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
 
 
@@ -50,6 +51,8 @@ def generate_launch_description():
     config_file = LaunchConfiguration('config_file')
 
     return LaunchDescription([
+        DeclareLaunchArgument('steering_ros_enabled', default_value='false',
+                              description='Enable bounded ROS steering with latched joystick takeover'),
         DeclareLaunchArgument(
             'simulation',
             default_value='true',
@@ -107,6 +110,7 @@ def generate_launch_description():
             output='screen',
             parameters=[{
                 'simulation': simulation,
+                'steering_ros_enabled': ParameterValue(LaunchConfiguration('steering_ros_enabled'), value_type=bool),
                 'network': network,
                 'config_file': config_file
             }],

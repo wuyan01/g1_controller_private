@@ -2,8 +2,10 @@
 #include "FSM/State_Passive.h"
 #include "FSM/State_FixStand.h"
 #include "FSM/State_RLBase.h"
+#include "FSM/State_ScaleBFM.h"
 #include "State_Mimic.h"
 #include <rclcpp/rclcpp.hpp>
+#include "unitree_dds.h"
 
 
 std::unique_ptr<LowCmd_t> FSMState::lowcmd = nullptr;
@@ -64,6 +66,7 @@ int main(int argc, char** argv)
 
     // Get parameters
     std::string network = node->declare_parameter<std::string>("network", "lo");
+    node->declare_parameter<bool>("steering_ros_enabled", false);
     const auto config_file = node->declare_parameter<std::string>("config_file", "config.yaml");
     std::cout << "Using network interface: " << network << std::endl;
 
@@ -74,7 +77,7 @@ int main(int argc, char** argv)
     std::cout << "     G1-29dof Controller  " << std::endl;
 
     // Unitree DDS Config
-    unitree::robot::ChannelFactory::Instance()->Init(0, network);
+    initialize_unitree_dds(network);
 
     init_fsm_state(node);
 

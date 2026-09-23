@@ -89,6 +89,24 @@ State_RLBase::State_RLBase(int state_mode, std::string state_string)
         env->alg = std::make_unique<isaaclab::OrtRunner>(policy_path, precision);
     }
     env->action.resize(env->alg->action.size(), 0.0f);
+    const bool accepts_ros_velocity = state_string == "Velocity" && observations_cfg["velocity_commands"].IsDefined();
+    if (node_ && (has_steering_command_observation_ || accepts_ros_velocity) &&
+        node_->get_parameter("steering_ros_enabled").as_bool()) {
+        env->ros_steering_enabled = true;
+        steering_ready_pub_ = node_->create_publisher<std_msgs::msg::Bool>("/codex/steering_ready", 1);
+        steering_sub_ = node_->create_subscription<geometry_msgs::msg::TwistStamped>(
+            "/codex/steering_command", rclcpp::QoS(1).best_effort(),
+            [this](geometry_msgs::msg::TwistStamped::ConstSharedPtr msg) {
+                const double age = (node_->now() - rclcpp::Time(msg->header.stamp)).seconds();
+                const auto& t = msg->twist;
+                if (msg->header.frame_id != "heading" || !std::isfinite(age) || age < 0.0 || age > 0.2 ||
+                    t.linear.z != 0.0 || t.angular.x != 0.0 || t.angular.y != 0.0) {
+                    env->external_steering.receive(0.0f, 0.0f, 0.0f);
+                    return;
+                }
+                env->external_steering.receive(t.linear.x, t.linear.y, t.angular.z);
+            });
+    }
     if (has_goal_command_observation_) {
         env->set_text_key(goal_idle_text_key_);
     }
@@ -303,11 +321,12 @@ double State_RLBase::goal_distance_xy() const
 
 void State_RLBase::publish_steering_velocitymarkers()
 {
-    if (!has_steering_command_observation_ || !velocitymarkers) {
+    if ((!has_steering_command_observation_ && !env->ros_steering_enabled) || !velocitymarkers) {
         return;
     }
 
-    const auto command = env->get_steering_command();
+    const auto command = has_steering_command_observation_
+        ? env->get_steering_command() : env->last_velocity_command();
     const auto& data = env->robot->data;
     const auto orientation = data.root_quat_w.normalized();
     // Steering commands use yaw only. Measured velocity is in the full torso

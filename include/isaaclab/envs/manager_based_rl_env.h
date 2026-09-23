@@ -7,6 +7,7 @@
 #include <yaml-cpp/yaml.h>
 #include "isaaclab/manager/observation_manager.h"
 #include "isaaclab/envs/steering_command.h"
+#include "isaaclab/envs/external_steering.h"
 #include "isaaclab/manager/action_manager.h"
 #include "isaaclab/assets/articulation/articulation.h"
 #include "isaaclab/algorithms/algorithms.h"
@@ -112,6 +113,7 @@ public:
         episode_length = 0;
         robot->update();
         reset_steering_command();
+        external_steering.activate(ros_steering_enabled);
         initialize_goal_to_robot_if_unset();
         if (alg) {
             alg->reset();
@@ -140,6 +142,27 @@ public:
         action_manager->process_action(indexed_action);
         episode_length += 1;
     }
+
+    bool ros_steering_enabled = false;
+    ExternalSteering external_steering;
+
+    std::vector<float> get_velocity_command()
+    {
+        auto* joystick = robot->data.joystick;
+        const auto ranges = cfg["commands"]["base_velocity"]["ranges"];
+        const auto velocity = external_steering.select_velocity(
+            ros_steering_enabled,
+            {joystick ? joystick->ly() : 0.0f, joystick ? -joystick->lx() : 0.0f,
+             joystick ? -joystick->rx() : 0.0f},
+            {ranges["lin_vel_x"][0].as<float>(), ranges["lin_vel_y"][0].as<float>(),
+             ranges["ang_vel_z"][0].as<float>()},
+            {ranges["lin_vel_x"][1].as<float>(), ranges["lin_vel_y"][1].as<float>(),
+             ranges["ang_vel_z"][1].as<float>()});
+        velocity_command_ = {velocity.begin(), velocity.end()};
+        return velocity_command_;
+    }
+
+    const std::vector<float>& last_velocity_command() const { return velocity_command_; }
 
     // Thread-safe text key management for real-time text command updates
     bool set_text_key(const std::string& key) {
@@ -272,6 +295,15 @@ private:
             return;
         }
         auto* joystick = robot->data.joystick;
+        if (ros_steering_enabled) {
+            const bool moved = joystick && (std::hypot(joystick->ly(), joystick->lx()) > 0.1f ||
+                                           std::abs(joystick->rx()) > 0.1f);
+            const auto velocity = external_steering.sample(moved);
+            if (external_steering.ready()) {
+                steering_command_.update_velocity(robot_yaw(), velocity[0], velocity[1], velocity[2], step_dt);
+                return;
+            }
+        }
         steering_command_.update(
             robot_yaw(), joystick ? joystick->ly() : 0.0f,
             joystick ? -joystick->lx() : 0.0f,
@@ -280,6 +312,7 @@ private:
     }
 
     SteeringCommand steering_command_;
+    std::vector<float> velocity_command_{0.0f, 0.0f, 0.0f};
     bool steering_command_enabled_ = false;
     std::string current_text_key_;
     mutable std::mutex text_key_mutex_;

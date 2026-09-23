@@ -63,6 +63,27 @@ public:
 
     const std::array<float, 4>& command() const { return command_; }
 
+    // Physical units, without joystick deadzone. An idle ROS command cancels
+    // any outstanding turn rather than holding a previous desired heading.
+    void update_velocity(float yaw, float vx, float vy, float wz, float dt)
+    {
+        if (!std::isfinite(yaw) || !std::isfinite(vx) || !std::isfinite(vy) ||
+            !std::isfinite(wz) || !std::isfinite(dt) || dt <= 0.0f) {
+            throw std::invalid_argument("Invalid external steering command");
+        }
+        if (vx == 0.0f && vy == 0.0f && wz == 0.0f) {
+            reset(yaw);
+            return;
+        }
+        const float speed = std::hypot(vx, vy);
+        const float scale = speed > max_speed_ ? max_speed_ / speed : 1.0f;
+        command_[0] = vx * scale;
+        command_[1] = vy * scale;
+        heading_target_ = wrap(heading_target_ + std::clamp(wz, -max_yaw_rate_, max_yaw_rate_) * dt);
+        command_[2] = std::cos(heading_target_ - yaw);
+        command_[3] = std::sin(heading_target_ - yaw);
+    }
+
 private:
     static float wrap(float angle) { return std::atan2(std::sin(angle), std::cos(angle)); }
 

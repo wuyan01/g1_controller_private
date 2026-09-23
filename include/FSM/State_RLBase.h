@@ -7,6 +7,8 @@
 #include "isaaclab/envs/mdp/actions/joint_actions.h"
 #include "isaaclab/envs/mdp/terminations.h"
 #include <geometry_msgs/msg/pose_stamped.hpp>
+#include <geometry_msgs/msg/twist_stamped.hpp>
+#include <std_msgs/msg/bool.hpp>
 #include <std_msgs/msg/string.hpp>
 #include <std_msgs/msg/float32_multi_array.hpp>
 #include <visualization_msgs/msg/marker.hpp>
@@ -75,6 +77,11 @@ public:
             {
                 const auto step_start = clock::now();
                 env->step();
+                if (steering_ready_pub_) {
+                    std_msgs::msg::Bool ready;
+                    ready.data = env->external_steering.ready();
+                    steering_ready_pub_->publish(ready);
+                }
                 const auto action_update_time = steady_clock::now();
                 publish_latest_action_snapshot(
                     env->action_manager->processed_actions(),
@@ -121,6 +128,10 @@ public:
         if (policy_thread.joinable()) {
             policy_thread.join();
         }
+        env->external_steering.activate(false);
+        if (steering_ready_pub_) {
+            steering_ready_pub_->publish(std_msgs::msg::Bool{});
+        }
         if (action_csv_stream_.is_open()) {
             action_csv_stream_.flush();
             action_csv_stream_.close();
@@ -153,6 +164,8 @@ private:
     // ROS subscriber for real-time text commands
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr text_cmd_sub_;
     rclcpp::CallbackGroup::SharedPtr text_cmd_cb_group_;
+    rclcpp::Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr steering_sub_;
+    rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr steering_ready_pub_;
 
     // ROS subscriber for goal-reaching commands
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr goal_pose_sub_;
@@ -234,7 +247,7 @@ private:
 
     void republish_velocitymarkers()
     {
-        if (has_steering_command_observation_) {
+        if (has_steering_command_observation_ || env->ros_steering_enabled) {
             return; // Published from the policy thread with a coherent state.
         }
         if (!env->cfg["commands"].IsDefined() ||

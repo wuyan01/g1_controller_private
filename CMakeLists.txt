@@ -191,8 +191,11 @@ install(DIRECTORY launch config
 
 install(PROGRAMS scripts/sam3_perception.py scripts/sam3_python.sh scripts/create_chair_scene.py scripts/create_desk_scene.py
                  scripts/sam3_localization.py scripts/sam3_benchmark.py
+                 scripts/codex_ros_bridge.py
   DESTINATION lib/${PROJECT_NAME}
 )
+
+install(FILES scripts/codex_ros_core.py scripts/codex_rgbd.py DESTINATION lib/${PROJECT_NAME})
 
 ament_export_include_directories(include)
 ament_export_libraries(${PROJECT_NAME}_lib)
@@ -218,3 +221,7 @@ if(G1_BUILD_MUJOCO_CAMERA)
 endif()
 
 ament_package()
+
+# ScaleBFM ONNX integrity and standalone core (opt-in FSM).
+find_package(OpenSSL REQUIRED)
+target_link_libraries(${PROJECT_NAME}_lib OpenSSL::Crypto)
